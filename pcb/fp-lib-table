@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name PixArt)(type KiCad)(uri ${KIPRJMOD}/PixArt.pretty)(options "")(descr "PixArt sensors"))
+  (lib (name Molex)(type Github)(uri https://github.com/KiCad/Connectors_Molex.pretty)(options "")(descr ""))
+)

@@ -23,11 +23,16 @@
  *    | G9/CSB
  *    |
  *    VDDMA
+ *
+ * Vishay Semiconductors TSHA4400 IR LED (875nm) successfully detectable
+ * by the PixArt sensor.
  */
 
 #include <cstdio>
 #include <cstring>
 #include <SPI.h>
+
+static unsigned s_frame_period_micros;
 
 struct PA_object
 {
@@ -333,16 +338,16 @@ void PA_init()
   //PA_set_frame_rate(200.88);
   //PA_set_sensor_exposure_time(1.6384e-3);
   //PA_set_sensor_gain(0x10, 0);
-  PA_set_debug_image(7);
+  PA_set_debug_image(0);
   PA_print_settings();
-  unsigned frame_period_micros = (unsigned) PA_get_frame_period_microseconds();
+  s_frame_period_micros = (unsigned) PA_get_frame_period_microseconds();
    
   digitalWrite(A0, 1);
 
   // Read first frame
-  for (int i = 0; i < 30; i++)
+  for (int i = 0; i < 1; i++)
   {
-    delayMicroseconds(frame_period_micros);
+    delayMicroseconds(s_frame_period_micros);
   }
   digitalWrite(A0, 0);
   PA_object objs[16];
@@ -350,7 +355,7 @@ void PA_init()
   digitalWrite(A0, 1);
   
   // SPI end
-  SPI.endTransaction();
+  //SPI.endTransaction();
 
   // Print detected objects
   for (int i = 0; i < 16; i++)
@@ -379,7 +384,7 @@ void PA_init()
   }
   Serial.print("Image:\n");
   Serial.print(image);
-  free(image);
+  free(image); 
 }
 
 void setup() {
@@ -390,10 +395,28 @@ void setup() {
   SPI.begin();
   
   PA_init();
+   
   
-  SPI.end();
+  //SPI.end();
+  
+  //digitalWrite(A0, 1);
+  //SPI.beginTransaction(SPISettings(14000000, LSBFIRST, SPI_MODE3));
 }
 
 void loop() {
+  
   // put your main code here, to run repeatedly
+  delayMicroseconds(s_frame_period_micros);
+  digitalWrite(A0, 0);
+  PA_object objs[16];
+  PA_read_report(objs, 1);
+  digitalWrite(A0, 1);  // deasserting CS seems to be required for next frame readout
+
+  char buffer[1024];
+  char *ptr = buffer;
+  ptr += sprintf(ptr, "(%d,%d)\n", objs[0].boundary_left, objs[0].boundary_up);
+  Serial.print(buffer);
+
+  delayMicroseconds(1000000);
+  
 }

@@ -46,11 +46,12 @@ PROGRAMS =
 # Program definitions
 #
 include build/test_client.inc
+include build/ping_client.inc
 
 #
 # Header file location
 #
-#INCLUDE_DIRS += src/include/
+INCLUDE_DIRS += include/
 
 ###############################################################################
 # Output Locations

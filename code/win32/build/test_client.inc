@@ -3,9 +3,8 @@
 # is included from the main Makefile.
 #
 
-SRC_FILES_ping_client = \
-	serial_port.cpp \
-	util/format.cpp \
-	ping_client.cpp
+SRC_FILES_test_client = \
+	src/serial/serial_port.cpp \
+	src/apps/test_client.cpp
 
-PROGRAMS += ping_client
+PROGRAMS += test_client

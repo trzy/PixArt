@@ -51,7 +51,7 @@ include build/ping_client.inc
 #
 # Header file location
 #
-INCLUDE_DIRS += include/
+INCLUDE_DIRS += src/include/
 
 ###############################################################################
 # Output Locations

@@ -1,4 +1,4 @@
-#include "serial_port.hpp"
+#include "serial/serial_port.hpp"
 #include <iostream>
 
 int main(int argc, char **argv)

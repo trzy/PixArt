@@ -17,14 +17,14 @@ enum PacketID: uint8_t
 struct packet_header
 {
   const uint8_t words;
-  const uint8_t id;
+  const PacketID id;
 
   size_t bytes() const
   {
     return words * 2;
   }
 
-  packet_header(uint8_t packet_id, size_t packet_bytes)
+  packet_header(PacketID packet_id, size_t packet_bytes)
     : id(packet_id),
       words((packet_bytes + 1) /2)
   {

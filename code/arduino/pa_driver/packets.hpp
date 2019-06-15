@@ -66,12 +66,17 @@ STATIC_ASSERT_PACKET_SIZE(peek_packet);
 
 struct peek_response_packet: public packet_header
 {
-  const uint8_t data;
+  const uint8_t data = 0;
   const uint8_t __padding__ = 0;
 
   peek_response_packet(uint8_t in_data)
     : packet_header(PacketID::PeekResponse, sizeof(peek_response_packet)),
       data(in_data)
+  {
+  }
+
+  peek_response_packet()
+    : packet_header(PacketID::PeekResponse, sizeof(peek_response_packet))
   {
   }
 };

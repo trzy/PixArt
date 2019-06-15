@@ -146,16 +146,18 @@ double PA_get_frame_period_microseconds()
   return frame_period_millis;
 }
 
-void PA_write(uint8_t reg, uint8_t data)
+void PA_write(uint8_t bank, uint8_t reg, uint8_t data)
 {
   chip_select(true);
+  write(0xef, bank);
   write(reg, data);
   chip_select(false);
 }
 
-uint8_t PA_read(uint8_t reg)
+uint8_t PA_read(uint8_t bank, uint8_t reg)
 {
   chip_select(true);
+  write(0xef, bank);
   uint8_t value = read(reg);
   chip_select(false);
   return value;

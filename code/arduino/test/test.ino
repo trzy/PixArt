@@ -1,6 +1,5 @@
 void setup() {
   Serial.begin(9600);
-  delayMicroseconds(10000000);
   Serial.print("Hello, World!\n");
 }
 

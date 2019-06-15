@@ -18,13 +18,13 @@ namespace util
         {
         }
       };
-    }
-  
+    } // detail
+
     static uint64_t now()
     {
       return micros();
     }
-    
+
     template <typename Resolution>
     struct duration: public detail::duration_base
     {
@@ -69,7 +69,7 @@ namespace util
         int64_t rhs_ticks = rhs.count * RHSResolution::Ticks;
         return lhs_ticks > rhs_ticks;
       }
-      
+
       template <typename RHSResolution>
       bool operator>=(const duration<RHSResolution> &rhs) const
       {
@@ -85,7 +85,7 @@ namespace util
         int64_t rhs_ticks = rhs.count * RHSResolution::Ticks;
         return lhs_ticks < rhs_ticks;
       }
-      
+
       template <typename RHSResolution>
       bool operator<=(const duration<RHSResolution> &rhs) const
       {
@@ -98,14 +98,14 @@ namespace util
         : detail::duration_base(in_count)
       {
       }
-  
+
       template <typename InResolution>
       duration(const duration<InResolution> &delta)
         : detail::duration_base(delta.count * (double(InResolution::Ticks) / double(Resolution::Ticks)))
       {
       }
     };
-  
+
     struct microsecond
     {
       struct resolution
@@ -113,7 +113,7 @@ namespace util
         static const constexpr int64_t Ticks = 1;
       };
     };
-  
+
     struct millisecond
     {
       struct resolution
@@ -121,7 +121,7 @@ namespace util
         static const constexpr int64_t Ticks = 1000;
       };
     };
-  
+
     struct second
     {
       struct resolution
@@ -129,7 +129,7 @@ namespace util
         static const constexpr int64_t Ticks = 1000000;
       };
     };
-  }
+  } // time
 
   using microsecond = time::microsecond;
   using millisecond = time::millisecond;
@@ -144,11 +144,11 @@ namespace util
   {
     return count;
   }
-  
+
   inline time::duration<second::resolution> seconds(int64_t count)
   {
     return count;
   }
-}
+} // util
 
 #endif  // INCLUDED_TIME_HPP

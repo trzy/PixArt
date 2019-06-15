@@ -2,8 +2,8 @@
 #include "packets.hpp"
 #include "cooperative_task.hpp"
 
-static cooperative_task<util::millisecond::resolution> s_blink_led;
-static cooperative_task<util::millisecond::resolution> s_read_objects;
+static util::cooperative_task<util::millisecond::resolution> s_blink_led;
+static util::cooperative_task<util::millisecond::resolution> s_read_objects;
 
 static void blink_led(util::time::duration<util::microsecond::resolution> delta, size_t count)
 {
@@ -36,8 +36,8 @@ static void read_objects(util::time::duration<util::microsecond::resolution> del
 void setup()
 {
   Serial.begin(9600); 
-  s_blink_led = cooperative_task<util::millisecond::resolution>(util::milliseconds(100), blink_led);
-  s_read_objects = cooperative_task<util::millisecond::resolution>(util::seconds(1), read_objects);
+  s_blink_led = util::cooperative_task<util::millisecond::resolution>(util::milliseconds(100), blink_led);
+  s_read_objects = util::cooperative_task<util::millisecond::resolution>(util::seconds(1), read_objects);
   PA_init();
 }
 

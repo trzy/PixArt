@@ -8,14 +8,14 @@
 # Libraries
 ###############################################################################
 
-INCLUDE_DIRS = c:\boost\boost_1_69_0 c:\opencv\builds\opencv-4.0.1\mingw\install\include
-LIB_DIRS = c:\opencv\builds\opencv-4.0.1\mingw\install\x64\mingw\staticlib c:\boost\boost_1_69_0\stage\lib
+INCLUDE_DIRS = c:\boost\boost_1_69_0 c:\opencv\builds\opencv-4.0.1\mingw\install\include ..\arduino
+LIB_DIRS = c:\opencv\builds\opencv-4.0.1\mingw\install\x64\mingw\staticlib c:\boost\boost_1_69_0\stage\lib c:/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/lib
 LIBS_WIN32API = gdi32 comdlg32
 LIBS_NETWORKING = ws2_32 wsock32
 LIBS_OPENCV = opencv_objdetect401 opencv_imgcodecs401 opencv_imgproc401 opencv_highgui401 opencv_core401 libtiff libjpeg-turbo libwebp libpng libjasper IlmImf zlib
 LIBS_BOOST = boost_filesystem-mgw81-mt-s-x64-1_69
 LIBS_UNIT_TEST = boost_unit_test_framework-mgw81-mt-s-x64-1_69
-LIBS_COMMON = $(LIBS_WIN32API) $(LIBS_NETWORKING) $(LIBS_OPENCV) $(LIBS_BOOST)
+LIBS_COMMON = $(LIBS_WIN32API) $(LIBS_BOOST)
 
 ###############################################################################
 # Build Options
@@ -45,8 +45,7 @@ PROGRAMS =
 #
 # Program definitions
 #
-include build/test_client.inc
-include build/ping_client.inc
+include build/pa_driver_test.inc
 
 #
 # Header file location
@@ -78,7 +77,11 @@ DELETE = rmdir /s /q
 
 define MakeTarget =
 
-LIBS_RESOLVED := $(LIBS) $(LIBS_$(1))
+#
+# Program targets can add custom linker options
+#
+LDFLAGS_RESOLVED_$(1) := $(LDFLAGS_$(1))
+
 #
 # Object files in sorted-path compile order
 #
@@ -91,7 +94,7 @@ $(BIN_DIR)/$(1).exe: $$(OBJ_FILES_$(1))
 	$$(info -----------------------------------------------------------------------------)
 	$$(info Linking                : $(BIN_DIR)/$(1).exe)
 	$$(info -----------------------------------------------------------------------------)
-	$(SILENT)$(LD) -o $(BIN_DIR)/$(1).exe $$(OBJ_FILES_$(1)) $(LDFLAGS) $$(addprefix -l,$$(LIBS_$(1)))
+	$(SILENT)$(LD) -o $(BIN_DIR)/$(1).exe $$(OBJ_FILES_$(1)) $(LDFLAGS) $$(LDFLAGS_RESOLVED_$(1))
 
 #
 # Create list of auto-generated dependency files (which contain rules that make

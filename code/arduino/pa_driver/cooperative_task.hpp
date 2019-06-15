@@ -19,7 +19,7 @@ namespace util
   public:
     void tick(int now_micros)
     {
-      if (m_task_cb)
+      if (!m_task_cb)
       {
         // No callback indicates default-constructed task, which would loop indefinitely
         return;

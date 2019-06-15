@@ -19,18 +19,23 @@ namespace util
   public:
     void tick(int now_micros)
     {
+      if (m_task_cb)
+      {
+        // No callback indicates default-constructed task, which would loop indefinitely
+        return;
+      }
+
       util::time::duration<util::microsecond::resolution> delta(now_micros - m_last_time);
       m_delta += delta;
       auto delta_since_last_tick = m_delta;
       m_last_time = now_micros;
-  
+
       while (m_delta >= m_period)
       {
-        if (m_task_cb)
+        if (m_task_cb)  // redundant check because Arduino doesn't implement std::__throw_bad_function_call()
         {
           m_task_cb(delta_since_last_tick, m_count);
         }
-  
         m_delta -= m_period;
         m_count += 1;
       }

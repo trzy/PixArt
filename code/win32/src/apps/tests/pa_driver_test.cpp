@@ -110,6 +110,8 @@ static void print_sensor_settings(serial_port *port)
 static void print_frames(serial_port *port)
 {
   object_report_request_packet request;
+  size_t frame_number = 0;
+  std::chrono::high_resolution_clock::time_point tprev;
 
   packet_reader reader(
     [&](uint8_t *buffer, size_t size) -> size_t
@@ -118,11 +120,22 @@ static void print_frames(serial_port *port)
     },
     [&](PacketID id, const uint8_t *buffer, size_t size) -> bool
     {
+      std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
       if (id == PacketID::ObjectReport)
       {
         port->writeSerialPort((char *) &request, sizeof(request));
         const object_report_packet *response = reinterpret_cast<const object_report_packet *>(buffer);
-        printf("format=%d\n", response->format);
+
+        if (frame_number > 0)
+        {
+          double ms = std::chrono::duration<double, std::milli>(tnow - tprev).count();
+          int x = response->data[9] & 0x7f;
+          int y = response->data[11] & 0x7f;
+          printf("%1.2f ms elapsed, (%d,%d)\n", ms, x, y);
+        }
+
+        frame_number += 1;
+        tprev = tnow;
         return true;
       }
       return false;

@@ -1,7 +1,7 @@
 #include "serial/serial_port.hpp"
 #include <cstdio>
 
-serial_port::serial_port(char *portName)
+serial_port::serial_port(const char *portName)
 {
     this->connected = false;
 

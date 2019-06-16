@@ -1,3 +1,4 @@
+#pragma once
 #ifndef INCLUDED_SERIAL_PORT_HPP
 #define INCLUDED_SERIAL_PORT_HPP
 
@@ -14,7 +15,7 @@ private:
     COMSTAT status;
     DWORD errors;
 public:
-    serial_port(char *portName);
+    serial_port(const char *portName);
     ~serial_port();
 
     int readSerialPort(char *buffer, unsigned int buf_size);

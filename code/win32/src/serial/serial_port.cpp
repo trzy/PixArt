@@ -1,4 +1,5 @@
 #include "serial/serial_port.hpp"
+#include <algorithm>
 #include <cstdio>
 
 serial_port::serial_port(const char *portName)
@@ -57,21 +58,18 @@ serial_port::~serial_port()
 
 int serial_port::readSerialPort(char *buffer, unsigned int buf_size)
 {
-    DWORD bytesRead;
-    unsigned int toRead;
+  DWORD bytesRead = 0;
+  unsigned int toRead;
 
-    ClearCommError(this->handler, &this->errors, &this->status);
+  ClearCommError(this->handler, &this->errors, &this->status);
 
-    if (this->status.cbInQue > 0){
-        if (this->status.cbInQue > buf_size){
-            toRead = buf_size;
-        }
-        else toRead = this->status.cbInQue;
-    }
+  if (this->status.cbInQue > 0)
+  {
+    toRead = std::min((unsigned int)this->status.cbInQue, buf_size);
+    ReadFile(this->handler, buffer, toRead, &bytesRead, NULL);
+  }
 
-    if (ReadFile(this->handler, buffer, toRead, &bytesRead, NULL)) return bytesRead;
-
-    return 0;
+  return bytesRead;
 }
 
 bool serial_port::writeSerialPort(char *buffer, unsigned int buf_size)

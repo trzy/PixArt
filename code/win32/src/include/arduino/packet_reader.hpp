@@ -9,13 +9,37 @@
 class packet_reader
 {
 public:
-  packet_reader(const std::function<size_t(uint8_t *, size_t)> &&read_fn, const std::function<void(PacketID, const uint8_t *, size_t)> &&on_packet)
+  packet_reader(const std::function<size_t(uint8_t *, size_t)> &&read_fn, const std::function<bool(PacketID, const uint8_t *, size_t)> &&on_packet)
     : m_read_fn(read_fn),
       m_on_packet(on_packet)
   {
   }
-  
+
   void tick()
+  {
+    try_get_packet();
+  }
+
+  void wait_for_packets(size_t count)
+  {
+    while (count > 0)
+    {
+      if (try_get_packet())
+      {
+        count--;
+      }
+    }
+  }
+
+private:
+  std::function<size_t(uint8_t *, size_t)> m_read_fn;
+  std::function<bool(PacketID, const uint8_t *, size_t)> m_on_packet;
+  std::vector<uint8_t> m_buffer;
+  size_t m_idx = 0;
+
+  // Returns true when complete packet has been received and callback signals
+  // that it was the expected one
+  bool try_get_packet()
   {
     // Read header
     if (m_idx < sizeof(packet_header))
@@ -27,10 +51,10 @@ public:
       if (bytes_received < bytes_required)
       {
         // Full header not yet obtained...
-        return;
+        return false;
       }
     }
-    
+
     // Read remainder of packet
     const packet_header *header = reinterpret_cast<const packet_header *>(&m_buffer[0]);
     size_t packet_size = header->words * 2;
@@ -41,20 +65,14 @@ public:
     if (bytes_received < bytes_remaining)
     {
       // Packet not yet obtained
-      return;
+      return false;
     }
-    
+
     // Fire callback and reset
-    m_on_packet(header->id, m_buffer.data(), packet_size);
     m_idx = 0;
+    return m_on_packet(header->id, m_buffer.data(), packet_size);
   }
 
-private:
-  std::function<size_t(uint8_t *, size_t)> m_read_fn;
-  std::function<void(PacketID, const uint8_t *, size_t)> m_on_packet;
-  std::vector<uint8_t> m_buffer;
-  size_t m_idx = 0;
-  
   void resize_buffer(size_t size)
   {
     if (m_buffer.size() < size)

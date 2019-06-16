@@ -4,6 +4,7 @@
 #include "util/format.hpp"
 #include <cstdio>
 #include <chrono>
+#include <map>
 
 static double compute_frame_period_seconds(uint32_t frame_period_reg)
 {
@@ -20,28 +21,29 @@ static void print_sensor_settings(serial_port *port)
     uint8_t reg;
   } registers[] =
   {
-    { 0x00, 0x02 }, // 0  product ID
-    { 0x00, 0x03 }, // 1
-    { 0x00, 0x0f }, // 2  DSP noise threshold
-    { 0x00, 0x10 }, // 3  DSP orientation ratio
-    { 0x00, 0x11 }, // 4  DSP orientation factor
-    { 0x00, 0x19 }, // 5  DSP maximum object number
-    { 0x01, 0x05 }, // 6  sensor gain 1
-    { 0x01, 0x06 }, // 7  sensor gain 2
-    { 0x01, 0x0e }, // 8  sensor exposure length
-    { 0x01, 0x0f }, // 9
-    { 0x0c, 0x60 }, // 10 interpolated resolution x
-    { 0x0c, 0x61 }, // 11
-    { 0x0c, 0x62 }, // 12 interpolated resolution y
-    { 0x0c, 0x63 }, // 13
-    { 0x00, 0x0b }, // 14 DSP max area threshold
-    { 0x00, 0x0c }, // 15
-    { 0x0c, 0x07 }, // 16 frame period
-    { 0x0c, 0x08 }, // 17
-    { 0x0c, 0x09 }  // 18
+    { 0x00, 0x02 }, // product ID
+    { 0x00, 0x03 }, //
+    { 0x00, 0x0f }, // DSP noise threshold
+    { 0x00, 0x0b }, // DSP max area threshold
+    { 0x00, 0x0c }, //
+    { 0x00, 0x10 }, // DSP orientation ratio
+    { 0x00, 0x11 }, // DSP orientation factor
+    { 0x00, 0x19 }, // DSP maximum object number
+    { 0x01, 0x05 }, // sensor gain 1
+    { 0x01, 0x06 }, // sensor gain 2
+    { 0x01, 0x0e }, // sensor exposure length
+    { 0x01, 0x0f }, //
+    { 0x0c, 0x60 }, // interpolated resolution x
+    { 0x0c, 0x61 }, //
+    { 0x0c, 0x62 }, // interpolated resolution y
+    { 0x0c, 0x63 }, //
+    { 0x0c, 0x07 }, // frame period
+    { 0x0c, 0x08 }, //
+    { 0x0c, 0x09 }  //
   };
 
-  std::vector<peek_response_packet> responses;
+  // Responses are indexed with a key comprising bank and address
+  std::map<uint16_t, uint8_t> values;
   packet_reader reader(
     [&](uint8_t *buffer, size_t size) -> size_t
     {
@@ -51,7 +53,9 @@ static void print_sensor_settings(serial_port *port)
     {
       if (id == PacketID::PeekResponse)
       {
-        responses.emplace_back(*reinterpret_cast<const peek_response_packet *>(buffer));
+        const peek_response_packet *response = reinterpret_cast<const peek_response_packet *>(buffer);
+        uint16_t key = (response->bank << 8) | response->address;
+        values.emplace(key, response->data);
         return true;
       }
       return false;
@@ -70,25 +74,25 @@ static void print_sensor_settings(serial_port *port)
   reader.wait_for_packets(num_requests);
 
   // Decode registers
-  uint16_t product_id = (responses[1].data << 8) | responses[0].data;
-  uint16_t max_area_threshold = (responses[15].data << 8) | responses[14].data;
-  uint8_t noise_threshold = responses[2].data;
-  uint8_t orientation_ratio = responses[3].data;
-  uint8_t orientation_factor = responses[4].data;
-  uint8_t max_object_number = responses[5].data;
-  uint8_t sensor_gain_1 = responses[6].data;
-  uint8_t sensor_gain_2 = responses[7].data;
-  uint16_t sensor_exposure_length = (responses[9].data << 8) | responses[8].data;
-  uint16_t interpolated_resolution_x = (responses[11].data << 8) | responses[10].data;
-  uint16_t interpolated_resolution_y = (responses[13].data << 8) | responses[12].data;
-  uint32_t frame_period_reg = (responses[18].data << 16) | (responses[17].data << 8) | responses[16].data;
+  uint16_t product_id = (values[0x0003] << 8) | values[0x0002];
+  uint16_t max_area_threshold = (values[0x000c] << 8) | values[0x000b];
+  uint8_t noise_threshold = values[0x000f];
+  uint8_t orientation_ratio = values[0x0010];
+  uint8_t orientation_factor = values[0x0011];
+  uint8_t max_object_number = values[0x0019];
+  uint8_t sensor_gain_1 = values[0x0105];
+  uint8_t sensor_gain_2 = values[0x0106];
+  uint16_t sensor_exposure_length = (values[0x010f] << 8) | values[0x010e];
+  uint16_t interpolated_resolution_x = (values[0x0c61] << 8) | values[0x0c60];
+  uint16_t interpolated_resolution_y = (values[0x0c63] << 8) | values[0x0c62];
+  uint32_t frame_period_reg = (values[0x0c09] << 16) | (values[0x0c08] << 8) | values[0x0c07];
   double frame_period = compute_frame_period_seconds(frame_period_reg);
   double frame_rate = 1.0f / frame_period;
 
   // Print
   printf("PAJ7025R2 Settings\n");
   printf("------------------\n");
-  printf("Product ID                    = 0x%04x\n", product_id);
+  printf("Product ID                    = 0x%04x %s\n", product_id, product_id == 0x7025 ? "" : "(unknown device)");
   printf("DSP area max threshold        = 0x%04x\n", max_area_threshold);
   printf("DSP noise threshold           = 0x%02x\n", noise_threshold);
   printf("DSP orientation ratio         = 0x%02x\n", orientation_ratio);

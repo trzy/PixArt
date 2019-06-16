@@ -49,7 +49,7 @@ static void process_packet(const uint8_t *buffer)
   case PacketID::Peek:
   {
     const peek_packet *peek = reinterpret_cast<const peek_packet *>(buffer);
-    peek_response_packet peek_response(PA_read(peek->bank, peek->address));
+    peek_response_packet peek_response(peek->bank, peek->address, PA_read(peek->bank, peek->address));
     Serial.write(reinterpret_cast<const uint8_t *>(&peek_response), sizeof(peek_response));
     break;
   }

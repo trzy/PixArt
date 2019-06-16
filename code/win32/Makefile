@@ -106,7 +106,7 @@ AUTODEPS := $$(patsubst %.o,%.d,$$(OBJ_FILES_$(1)))
 #
 # VPATH is the search path for files. This trick allows a single %.cpp rule to
 # be matched against files in any subdirectory. This function strips off file
-# names, saving the directory prefix, and sorts to remove duplicates and 
+# names, saving the directory prefix, and sorts to remove duplicates and
 # construct a set.
 #
 VPATH = $(sort $(VPATH) $(foreach file,$(SRC_FILES_$(1)),$(dir	$(file))))
@@ -119,21 +119,21 @@ endef
 
 .PHONY: all clean
 
-# 
+#
 # Default target: builds the binary. Must be specified *before* the auto-
 # generated dependencies because otherwise, make gets confused for some reason
 # and thinks the default target is just one of the object files.
 #
 all:	$(BIN_DIR) $(OBJ_DIR) $(foreach program,$(PROGRAMS),$(BIN_DIR)/$(program).exe)
 
-clean:	 
+clean:
 	$(SILENT)echo Cleaning up $(BIN_DIR) and $(OBJ_DIR)...
 	$(SILENT)$(DELETE) $(BIN_DIR)
 	$(SILENT)$(DELETE) $(OBJ_DIR)
-	
+
 $(BIN_DIR):
 	$(info Creating directory     : $(BIN_DIR))
-	$(SILENT)mkdir $(BIN_DIR) 
+	$(SILENT)mkdir $(BIN_DIR)
 
 $(OBJ_DIR):
 	$(info Creating directory     : $(OBJ_DIR))
@@ -143,7 +143,7 @@ $(OBJ_DIR):
 # Generate targets for each program
 #
 $(foreach program,$(PROGRAMS),$(eval $(call MakeTarget,$(program))))
-	
+
 ###############################################################################
 # Rules
 ###############################################################################

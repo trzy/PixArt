@@ -2,8 +2,9 @@
 #include "packets.hpp"
 #include "cooperative_task.hpp"
 
-static util::cooperative_task<util::millisecond::resolution> s_blink_led;
-static util::cooperative_task<util::millisecond::resolution> s_read_objects;
+static util::cooperative_task<util::millisecond::resolution> s_led_blinker;
+static util::cooperative_task<util::microsecond::resolution> s_frame_reader;
+static bool s_send_object_report = false;
 
 static void blink_led(util::time::duration<util::microsecond::resolution> delta, size_t count)
 {
@@ -12,11 +13,19 @@ static void blink_led(util::time::duration<util::microsecond::resolution> delta,
   digitalWrite(LED_BUILTIN, on ? HIGH : LOW);
 }
 
-static void read_objects(util::time::duration<util::microsecond::resolution> delta, size_t count)
+static void read_frame(util::time::duration<util::microsecond::resolution> delta, size_t count)
 {
+  object_report_packet report(1);
+  PA_read_report(report.data, 1);
+  if (s_send_object_report)
+  {
+    Serial.write(reinterpret_cast<const uint8_t *>(&report), sizeof(report));
+    s_send_object_report = false;
+  }
+
+  /*
   PA_object objs[16];
   PA_read_report(objs, 1);
-  /*
   for (size_t i = 0; i < 16; i++)
   {
     Serial.print("Object ");
@@ -26,11 +35,11 @@ static void read_objects(util::time::duration<util::microsecond::resolution> del
     Serial.print(i >= 10 ? "-\n" : "\n");
     objs[i].print();
   }
-  */
   char buffer[1024];
   char *ptr = buffer;
   ptr += sprintf(ptr, "(%d,%d)\n", objs[0].boundary_left, objs[0].boundary_up);
   Serial.print(buffer);
+  */
 }
 
 static void process_packet(const uint8_t *buffer)
@@ -51,6 +60,11 @@ static void process_packet(const uint8_t *buffer)
     const peek_packet *peek = reinterpret_cast<const peek_packet *>(buffer);
     peek_response_packet peek_response(peek->bank, peek->address, PA_read(peek->bank, peek->address));
     Serial.write(reinterpret_cast<const uint8_t *>(&peek_response), sizeof(peek_response));
+    break;
+  }
+  case PacketID::ObjectReportRequest:
+  {
+    s_send_object_report = true;
     break;
   }
   }
@@ -74,14 +88,15 @@ static void read_serial_port()
 void setup()
 {
   Serial.begin(9600); 
-  s_blink_led = util::cooperative_task<util::millisecond::resolution>(util::milliseconds(100), blink_led);
-  s_read_objects = util::cooperative_task<util::millisecond::resolution>(util::seconds(1), read_objects);
   PA_init();
+  uint32_t frame_period = PA_get_frame_period_microseconds();
+  s_led_blinker = util::cooperative_task<util::millisecond::resolution>(util::milliseconds(100), blink_led);
+  s_frame_reader = util::cooperative_task<util::microsecond::resolution>(util::microseconds(frame_period), read_frame);
 }
 
 void loop()
 {
-  //s_read_objects.tick();
-  s_blink_led.tick();
+  s_frame_reader.tick();
+  s_led_blinker.tick();
   read_serial_port();
 }

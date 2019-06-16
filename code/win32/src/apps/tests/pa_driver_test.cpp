@@ -107,9 +107,39 @@ static void print_sensor_settings(serial_port *port)
   printf("Frame rate                    = %1.2f Hz\n", frame_rate);
 }
 
+static void print_frames(serial_port *port)
+{
+  object_report_request_packet request;
+
+  packet_reader reader(
+    [&](uint8_t *buffer, size_t size) -> size_t
+    {
+      return port->readSerialPort((char *) buffer, size);
+    },
+    [&](PacketID id, const uint8_t *buffer, size_t size) -> bool
+    {
+      if (id == PacketID::ObjectReport)
+      {
+        port->writeSerialPort((char *) &request, sizeof(request));
+        const object_report_packet *response = reinterpret_cast<const object_report_packet *>(buffer);
+        printf("format=%d\n", response->format);
+        return true;
+      }
+      return false;
+    }
+  );
+
+  port->writeSerialPort((char *) &request, sizeof(request));
+  while (true)
+  {
+    reader.tick();
+  }
+}
+
 int main(int argc, char **argv)
 {
   serial_port arduino_port("COM3");
   print_sensor_settings(&arduino_port);
+  print_frames(&arduino_port);
   return 0;
 }

@@ -3,7 +3,7 @@
 #include <SPI.h>
 
 static constexpr uint8_t PIN_CSB = A0;
-static unsigned s_frame_period_micros = 0;
+static uint32_t s_frame_period_micros = 0;
 
 void PA_object::render(char *output, int pitch, char symbol)
 {
@@ -133,17 +133,19 @@ static void load_initial_settings()
   write(0x01, 1);
 }
 
-double PA_get_frame_period_microseconds()
+uint32_t PA_get_frame_period_microseconds()
 {
+  // Read frame period, which is in units of 100 ns
   chip_select(true);
   write(0xef, 0x0c); // bank C
   uint32_t cmd_frame_period = read(0x07);
   cmd_frame_period |= read(0x08) << 8;
   cmd_frame_period |= read(0x09) << 16;
   chip_select(false);
-  double frame_period_100ns = (double) cmd_frame_period;
-  double frame_period_millis = frame_period_100ns * 1e-1; // 100 ns -> us
-  return frame_period_millis;
+
+  // 100 ns -> us, rounding to nearest microsecond
+  uint32_t microseconds = (cmd_frame_period / 10) + ((cmd_frame_period % 10) >= 5 ? 1 : 0);
+  return microseconds;
 }
 
 void PA_write(uint8_t bank, uint8_t reg, uint8_t data)
@@ -220,7 +222,7 @@ void PA_init()
   chip_select(false);
   // TODO: set frame rate, sensor gain, etc.
   // TODO: learn how frames are actually triggered?
-  s_frame_period_micros = (unsigned) PA_get_frame_period_microseconds();
+  s_frame_period_micros = PA_get_frame_period_microseconds();
 }
 
 void PA_deinit()

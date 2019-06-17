@@ -6,22 +6,26 @@
 #define MAX_DATA_LENGTH 255
 
 #include <windows.h>
+#include <cstdint>
 #include <string>
 
 class serial_port
 {
 private:
-    HANDLE handler;
-    bool connected;
-    COMSTAT status;
-    DWORD errors;
-public:
-    serial_port(const std::string &portName, unsigned baudRate = 9600);
-    ~serial_port();
+  static const constexpr DWORD ArduinoWaitTime = 2000;
+  static const constexpr size_t MaxDataLength = 255;
 
-    int readSerialPort(char *buffer, unsigned int buf_size);
-    bool writeSerialPort(char *buffer, unsigned int buf_size);
-    bool isConnected();
+  HANDLE m_handler;
+  bool m_connected;
+  COMSTAT m_status;
+  DWORD m_errors;
+
+public:
+  serial_port(const std::string &port_name, unsigned baud_rate = 9600);
+  ~serial_port();
+  uint32_t read(uint8_t *buffer, uint32_t buf_size);
+  bool write(const uint8_t *buffer, uint32_t buf_size);
+  bool is_connected() const;
 };
 
-#endif  // INCLUDED_SERIALPORT_HPP
+#endif  // INCLUDED_SERIAL_PORT_HPP

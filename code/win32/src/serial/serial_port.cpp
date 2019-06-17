@@ -1,89 +1,103 @@
 #include "serial/serial_port.hpp"
+#include "util/format.hpp"
+#include <stdexcept>
 #include <algorithm>
-#include <cstdio>
 
-serial_port::serial_port(const std::string &portName, unsigned baudRate)
+serial_port::serial_port(const std::string &port_name, unsigned baud_rate)
+  : m_connected(false)
 {
-    this->connected = false;
+  m_handler = CreateFileA(
+    port_name.c_str(),
+    GENERIC_READ | GENERIC_WRITE,
+    0,
+    NULL,
+    OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL,
+    NULL);
 
-    this->handler = CreateFileA(portName.c_str(),
-                                GENERIC_READ | GENERIC_WRITE,
-                                0,
-                                NULL,
-                                OPEN_EXISTING,
-                                FILE_ATTRIBUTE_NORMAL,
-                                NULL);
-    if (this->handler == INVALID_HANDLE_VALUE){
-        if (GetLastError() == ERROR_FILE_NOT_FOUND){
-            printf("ERROR: Handle was not attached. Reason: %s not available\n", portName);
-        }
+  if (m_handler == INVALID_HANDLE_VALUE)
+  {
+    DWORD error = GetLastError();
+    if (error == ERROR_FILE_NOT_FOUND)
+    {
+      throw std::runtime_error(util::format() << "Unable to open '" << port_name << "'. Is it busy?");
+    }
     else
-        {
-            printf("ERROR!!!");
-        }
+    {
+      throw std::runtime_error(util::format() << "Unable to open '" << port_name << "' (error code = " << util::hex((uint32_t) error) << ')');
     }
-    else {
-        DCB dcbSerialParameters = {0};
+  }
+  else
+  {
+    DCB dcb_serial_params = {0};
 
-        if (!GetCommState(this->handler, &dcbSerialParameters)) {
-            printf("failed to get current serial parameters");
-        }
-        else {
-            dcbSerialParameters.BaudRate = baudRate;
-            dcbSerialParameters.ByteSize = 8;
-            dcbSerialParameters.StopBits = ONESTOPBIT;
-            dcbSerialParameters.Parity = NOPARITY;
-            dcbSerialParameters.fDtrControl = DTR_CONTROL_ENABLE;
-
-            if (!SetCommState(handler, &dcbSerialParameters))
-            {
-                printf("ALERT: could not set Serial port parameters\n");
-            }
-            else {
-                this->connected = true;
-                PurgeComm(this->handler, PURGE_RXCLEAR | PURGE_TXCLEAR);
-                Sleep(ARDUINO_WAIT_TIME);
-            }
-        }
+    if (!GetCommState(m_handler, &dcb_serial_params))
+    {
+      throw std::runtime_error("Failed to obtain current serial port parameters");
     }
+    else
+    {
+      dcb_serial_params.BaudRate = baud_rate;
+      dcb_serial_params.ByteSize = 8;
+      dcb_serial_params.StopBits = ONESTOPBIT;
+      dcb_serial_params.Parity = NOPARITY;
+      dcb_serial_params.fDtrControl = DTR_CONTROL_ENABLE;
+
+      if (!SetCommState(m_handler, &dcb_serial_params))
+      {
+        throw std::runtime_error("Failed to set serial port parameters");
+      }
+      else
+      {
+        m_connected = true;
+        PurgeComm(m_handler, PURGE_RXCLEAR | PURGE_TXCLEAR);
+        Sleep(ARDUINO_WAIT_TIME);
+      }
+    }
+  }
 }
 
 serial_port::~serial_port()
 {
-    if (this->connected){
-        this->connected = false;
-        CloseHandle(this->handler);
-    }
+  if (m_connected)
+  {
+    m_connected = false;
+    CloseHandle(m_handler);
+  }
 }
 
-int serial_port::readSerialPort(char *buffer, unsigned int buf_size)
+uint32_t serial_port::read(uint8_t *buffer, uint32_t buf_size)
 {
-  DWORD bytesRead = 0;
-  unsigned int toRead;
+  DWORD bytes_read = 0;
+  uint32_t to_read;
 
-  ClearCommError(this->handler, &this->errors, &this->status);
+  ClearCommError(m_handler, &m_errors, &m_status);
 
-  if (this->status.cbInQue > 0)
+  if (m_status.cbInQue > 0)
   {
-    toRead = std::min((unsigned int)this->status.cbInQue, buf_size);
-    ReadFile(this->handler, buffer, toRead, &bytesRead, NULL);
+    to_read = std::min((unsigned int)m_status.cbInQue, buf_size);
+    ReadFile(m_handler, buffer, to_read, &bytes_read, NULL);
   }
 
-  return bytesRead;
+  return bytes_read;
 }
 
-bool serial_port::writeSerialPort(char *buffer, unsigned int buf_size)
+bool serial_port::write(const uint8_t *buffer, uint32_t buf_size)
 {
-    DWORD bytesSend;
+  DWORD bytes_sent;
 
-    if (!WriteFile(this->handler, (void*) buffer, buf_size, &bytesSend, 0)){
-        ClearCommError(this->handler, &this->errors, &this->status);
-        return false;
-    }
-    else return true;
+  if (!WriteFile(m_handler, reinterpret_cast<const void *>(buffer), buf_size, &bytes_sent, 0))
+  {
+    ClearCommError(m_handler, &m_errors, &m_status);
+    return false;
+  }
+  else
+  {
+    return true;
+  }
 }
 
-bool serial_port::isConnected()
+bool serial_port::is_connected() const
 {
-    return this->connected;
+  return m_connected;
 }

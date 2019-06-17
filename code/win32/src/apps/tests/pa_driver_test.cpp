@@ -52,7 +52,7 @@ static void print_sensor_settings(serial_port *port)
   packet_reader reader(
     [&](uint8_t *buffer, size_t size) -> size_t
     {
-      return port->readSerialPort((char *) buffer, size);
+      return port->read(buffer, size);
     },
     [&](PacketID id, const uint8_t *buffer, size_t size) -> bool
     {
@@ -72,7 +72,7 @@ static void print_sensor_settings(serial_port *port)
   for (size_t i = 0; i <num_requests; i++)
   {
     peek_packet peek(registers[i].bank, registers[i].reg);
-    port->writeSerialPort((char *) &peek, sizeof(peek));
+    port->write(reinterpret_cast<const uint8_t *>(&peek), sizeof(peek));
   }
 
   // Wait for all responses
@@ -121,14 +121,14 @@ static void print_frames(serial_port *port)
   packet_reader reader(
     [&](uint8_t *buffer, size_t size) -> size_t
     {
-      return port->readSerialPort((char *) buffer, size);
+      return port->read(buffer, size);
     },
     [&](PacketID id, const uint8_t *buffer, size_t size) -> bool
     {
       std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
       if (id == PacketID::ObjectReport)
       {
-        port->writeSerialPort((char *) &request, sizeof(request));  // request next frame
+        port->write(reinterpret_cast<const uint8_t *>(&request), sizeof(request));  // request next frame
         const object_report_packet *response = reinterpret_cast<const object_report_packet *>(buffer);
 
         if (frame_number > 0)
@@ -147,7 +147,7 @@ static void print_frames(serial_port *port)
     }
   );
 
-  port->writeSerialPort((char *) &request, sizeof(request));
+  port->write(reinterpret_cast<const uint8_t *>(&request), sizeof(request));
   while (true)
   {
     reader.tick();

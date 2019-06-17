@@ -22,7 +22,7 @@ struct packet_header
   const uint8_t words;
   const PacketID id;
 
-  size_t bytes() const
+  size_t size() const
   {
     return words * 2;
   }

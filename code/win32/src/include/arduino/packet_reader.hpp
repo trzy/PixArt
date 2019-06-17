@@ -57,7 +57,7 @@ private:
     }
 
     // Read remainder of packet
-    size_t packet_size = m_header->words * 2;
+    size_t packet_size = m_header->size();
     resize_buffer_and_update_header_pointer(packet_size);
     size_t bytes_remaining = packet_size - m_idx;
     size_t bytes_received = m_read_fn(&m_buffer[m_idx], bytes_remaining);

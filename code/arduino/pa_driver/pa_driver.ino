@@ -87,7 +87,7 @@ static void read_serial_port()
 
 void setup()
 {
-  Serial.begin(9600); 
+  Serial.begin(115200);
   PA_init();
   uint32_t frame_period = PA_get_frame_period_microseconds();
   s_led_blinker = util::cooperative_task<util::millisecond::resolution>(util::milliseconds(100), blink_led);

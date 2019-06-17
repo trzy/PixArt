@@ -35,6 +35,7 @@ private:
   std::function<size_t(uint8_t *, size_t)> m_read_fn;
   std::function<bool(PacketID, const uint8_t *, size_t)> m_on_packet;
   std::vector<uint8_t> m_buffer;
+  const packet_header *m_header = nullptr;
   size_t m_idx = 0;
 
   // Returns true when complete packet has been received and callback signals
@@ -44,7 +45,7 @@ private:
     // Read header
     if (m_idx < sizeof(packet_header))
     {
-      resize_buffer(sizeof(packet_header));
+      resize_buffer_and_update_header_pointer(sizeof(packet_header));
       size_t bytes_required = sizeof(packet_header) - m_idx;
       size_t bytes_received = m_read_fn(&m_buffer[m_idx], bytes_required);
       m_idx += bytes_received;
@@ -56,9 +57,8 @@ private:
     }
 
     // Read remainder of packet
-    const packet_header *header = reinterpret_cast<const packet_header *>(&m_buffer[0]);
-    size_t packet_size = header->words * 2;
-    resize_buffer(packet_size);
+    size_t packet_size = m_header->words * 2;
+    resize_buffer_and_update_header_pointer(packet_size);
     size_t bytes_remaining = packet_size - m_idx;
     size_t bytes_received = m_read_fn(&m_buffer[m_idx], bytes_remaining);
     m_idx += bytes_received;
@@ -70,14 +70,17 @@ private:
 
     // Fire callback and reset
     m_idx = 0;
-    return m_on_packet(header->id, m_buffer.data(), packet_size);
+    return m_on_packet(m_header->id, m_buffer.data(), packet_size);
   }
 
-  void resize_buffer(size_t size)
+  void resize_buffer_and_update_header_pointer(size_t size)
   {
     if (m_buffer.size() < size)
     {
       m_buffer.resize(size);
+
+      // Resize may have moved memory. Need updated pointer.
+      m_header = reinterpret_cast<const packet_header *>(m_buffer.data());
     }
   }
 };

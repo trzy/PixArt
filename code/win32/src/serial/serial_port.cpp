@@ -2,11 +2,11 @@
 #include <algorithm>
 #include <cstdio>
 
-serial_port::serial_port(const char *portName)
+serial_port::serial_port(const std::string &portName, unsigned baudRate)
 {
     this->connected = false;
 
-    this->handler = CreateFileA(static_cast<LPCSTR>(portName),
+    this->handler = CreateFileA(portName.c_str(),
                                 GENERIC_READ | GENERIC_WRITE,
                                 0,
                                 NULL,
@@ -29,7 +29,7 @@ serial_port::serial_port(const char *portName)
             printf("failed to get current serial parameters");
         }
         else {
-            dcbSerialParameters.BaudRate = CBR_115200;
+            dcbSerialParameters.BaudRate = baudRate;
             dcbSerialParameters.ByteSize = 8;
             dcbSerialParameters.StopBits = ONESTOPBIT;
             dcbSerialParameters.Parity = NOPARITY;

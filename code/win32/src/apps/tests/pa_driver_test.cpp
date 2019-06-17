@@ -1,10 +1,15 @@
 #include "pa_driver/packets.hpp"
 #include "arduino/packet_reader.hpp"
 #include "serial/serial_port.hpp"
-#include "util/format.hpp"
+#include "util/logging.hpp"
+#include "util/command_line.hpp"
 #include <cstdio>
 #include <chrono>
 #include <map>
+
+static util::config::Node s_config("Global");
+static constexpr const char *k_port = "Arduino/SerialPort/PortName";
+static constexpr const char *k_baud = "Arduino/SerialPort/BaudRate";
 
 static double compute_frame_period_seconds(uint32_t frame_period_reg)
 {
@@ -151,8 +156,31 @@ static void print_frames(serial_port *port)
 
 int main(int argc, char **argv)
 {
-  serial_port arduino_port("COM3");
-  print_sensor_settings(&arduino_port);
-  print_frames(&arduino_port);
+  {
+    using namespace util::command_line;
+    std::vector<option_definition> options
+    {
+      switch_option({{ "--help" }}, {{ "-?", "-h", "-help" }}, "ShowHelp", "Print this help text."),
+      default_valued_option("--port", string("name"), "COM3", k_port, "Serial port to connect on."),
+      default_valued_option("--baud", integer("rate", 300, 115200), "115200", k_baud, "Baud rate.")
+    };
+    auto state = parse_command_line(&s_config, options, argc, argv);
+    if (state.exit)
+    {
+      return state.parse_error ? 1 : 0;
+    }
+  }
+
+  try
+  {
+    serial_port arduino_port(s_config[k_port].Value<std::string>(), s_config[k_baud].ValueAs<unsigned>());
+    print_sensor_settings(&arduino_port);
+    print_frames(&arduino_port);
+  }
+  catch (std::exception& e)
+  {
+    LOG_ERROR("Exception caught: " << e.what());
+  }
+
   return 0;
 }

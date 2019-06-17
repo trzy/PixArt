@@ -6,6 +6,7 @@
 #define MAX_DATA_LENGTH 255
 
 #include <windows.h>
+#include <string>
 
 class serial_port
 {
@@ -15,7 +16,7 @@ private:
     COMSTAT status;
     DWORD errors;
 public:
-    serial_port(const char *portName);
+    serial_port(const std::string &portName, unsigned baudRate = 9600);
     ~serial_port();
 
     int readSerialPort(char *buffer, unsigned int buf_size);

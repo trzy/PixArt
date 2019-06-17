@@ -128,7 +128,7 @@ static void print_frames(serial_port *port)
       std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
       if (id == PacketID::ObjectReport)
       {
-        port->writeSerialPort((char *) &request, sizeof(request));
+        port->writeSerialPort((char *) &request, sizeof(request));  // request next frame
         const object_report_packet *response = reinterpret_cast<const object_report_packet *>(buffer);
 
         if (frame_number > 0)

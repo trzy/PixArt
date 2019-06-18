@@ -1,78 +1,10 @@
 #include "pixart.hpp"
+#include "pixart_object.hpp"
 #include <Arduino.h>
 #include <SPI.h>
 
 static constexpr uint8_t PIN_CSB = A0;
 static uint32_t s_frame_period_micros = 0;
-
-void PA_object::render(char *output, int pitch, char symbol)
-{
-  int lx = min(97, boundary_left);
-  int rx = min(97, boundary_right);
-  int uy = min(97, boundary_up);
-  int dy = min(97, boundary_down);
-  //Serial.print(lx,DEC);Serial.print(",");Serial.print(rx,DEC);Serial.print(",");Serial.print(uy,DEC);Serial.print(",");Serial.print(dy,DEC);Serial.print("\n");
-  for (int y = uy; y <= dy; y++)
-  {
-    for (int x = lx; x <= rx; x++)
-    {
-      output[y * pitch + x] = symbol;
-    }
-  }
-}
-
-void PA_object::print()
-{
-  char buffer[1024];
-  char *ptr = buffer;
-  ptr += sprintf(ptr, "center          = (%d,%d)\n", cx, cy);
-  ptr += sprintf(ptr, "area            = %d\n", area);
-  ptr += sprintf(ptr, "avg. brightness = %d\n", average_brightness);
-  ptr += sprintf(ptr, "max brightness  = %d\n", max_brightness);
-  ptr += sprintf(ptr, "range           = %d\n", range);
-  ptr += sprintf(ptr, "radius          = %d\n", radius);
-  ptr += sprintf(ptr, "boundary        = (%d,%d,%d,%d)\n", boundary_left, boundary_right, boundary_up, boundary_down);
-  ptr += sprintf(ptr, "aspect          = %d\n", aspect_ratio);
-  ptr += sprintf(ptr, "vx              = %d\n", vx);
-  ptr += sprintf(ptr, "vy              = %d\n", vy);
-  Serial.print(buffer);
-}
-
-void PA_object::load(const uint8_t *data, int format)
-{
-  memset(this, 0, sizeof(this));
-
-  // Formats 1-4
-  area = data[0] | ((data[1] & 0x3f) << 8);
-  cx = data[2] | ((data[3] & 0x0f) << 8);
-  cy = data[4] | ((data[5] & 0x0f) << 8);
-
-  // Format 1, 3
-  if (format == 1 || format == 3)
-  {
-    average_brightness = data[6];
-    max_brightness = data[7];
-    range = data[8] >> 4;
-    radius = data[8] & 0xf;
-  }
-
-  if (format == 1 || format == 4)
-  {
-    int offset = format == 4 ? 3 : 0;
-    boundary_left = data[9 - offset] & 0x7f;
-    boundary_right = data[10 - offset] & 0x7f;
-    boundary_up = data[11 - offset] & 0x7f;
-    boundary_down = data[12 - offset] & 0x7f;
-    aspect_ratio = data[13 - offset];
-    vx = data[14 - offset];
-    vy = data[15 - offset];
-  }
-}
-
-PA_object::PA_object(const uint8_t *data, int format)
-{
-  load(data, format);
-}
 
 static void chip_select(bool enable)
 {

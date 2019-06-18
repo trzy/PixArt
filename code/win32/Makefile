@@ -46,6 +46,7 @@ PROGRAMS =
 # Program definitions
 #
 include build/pa_driver_test.inc
+include build/object_visualizer.inc
 
 #
 # Header file location

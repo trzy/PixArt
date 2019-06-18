@@ -1,3 +1,9 @@
+/*
+ * pa_driver_test:
+ *
+ * Prints sensor information and prints object 0 position continuously.
+ */
+
 #include "pa_driver/packets.hpp"
 #include "arduino/packet_reader.hpp"
 #include "serial/serial_port.hpp"

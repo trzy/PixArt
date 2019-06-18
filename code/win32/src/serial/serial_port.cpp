@@ -20,7 +20,7 @@ serial_port::serial_port(const std::string &port_name, unsigned baud_rate)
     DWORD error = GetLastError();
     if (error == ERROR_FILE_NOT_FOUND)
     {
-      throw std::runtime_error(util::format() << "Unable to open '" << port_name << "'. Is it busy?");
+      throw std::runtime_error(util::format() << "Unable to open '" << port_name << "'. Is it busy or disconnected?");
     }
     else
     {

@@ -26,6 +26,12 @@ public:
   uint32_t read(uint8_t *buffer, uint32_t buf_size);
   bool write(const uint8_t *buffer, uint32_t buf_size);
   bool is_connected() const;
+  
+  template <typename T>
+  bool write(const T &object)
+  {
+    return write(reinterpret_cast<const uint8_t *>(&object), sizeof(T));
+  }
 };
 
 #endif  // INCLUDED_SERIAL_PORT_HPP

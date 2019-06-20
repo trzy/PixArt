@@ -270,6 +270,7 @@ namespace util
         store_constants("false"), // if_not_found
         config_key,           // config_key
         description,          // description
+        "",                   // default values description
         flags                 // flags
       }};
     }
@@ -291,6 +292,7 @@ namespace util
         store_constants("false"), // if_not_found
         config_key,           // config_key
         description,          // description
+        "",                   // default values description
         flags                 // flags
       }};
     }
@@ -313,6 +315,7 @@ namespace util
         do_nothing(),         // if_not_found
         config_key,           // config_key
         description,          // description
+        "",                   // default values description
         flags                 // flags
       }};
     }
@@ -334,6 +337,7 @@ namespace util
         do_nothing(),         // if_not_found
         config_key,           // config_key
         description,          // description
+        "",                   // default values description
         flags                 // flags
       }};
     }
@@ -356,6 +360,7 @@ namespace util
         store_constants(default_value), // if_not_found
         config_key,           // config_key
         description,          // description
+        default_value,        // default values description
         flags                 // flags
       }};
     }
@@ -377,6 +382,7 @@ namespace util
         do_nothing(),         // if_not_found
         config_key,           // config_key
         description,          // description
+        "",                   // default values description
         flags                 // flags
       }};
     }
@@ -399,6 +405,7 @@ namespace util
         store_constants(default_values),  // if_not_found
         config_key,           // config_key
         description,          // description
+        default_values,       // default values description
         flags                 // flags
       }};
     }
@@ -838,8 +845,41 @@ namespace util
       util::word_wrapper w(description_columns);
       for (auto &option: options)
       {
-        // Break up description into lines and get all names
+        // Description including, if applicable, default value
+        std::string defaults;
+        if (option.default_values_description.length() > 0)
+        {
+          defaults = util::format() << "[Default: " << option.default_values_description << ']';
+        }
+
+        // Break up description (without defaults) into lines
         std::vector<std::string> description_lines = w.wrap_words(option.description);
+        
+        // If last description line has space, append default values. Else, put
+        // them on their own line.
+        if (description_lines.size() == 0)
+        {
+          description_lines.emplace_back(defaults);
+        }
+        else
+        {
+          // Compute length of last description if we append the defaults
+          // (accounting for space and newline)
+          size_t last_idx = description_lines.size() - 1;
+          size_t length_with_defaults = description_lines[last_idx].length() + 1 + defaults.length() + 1;
+          if (length_with_defaults >= description_columns)
+          {
+            // Too long, need own line
+            description_lines.emplace_back(defaults);
+          }
+          else
+          {
+            // Okay to append
+            description_lines[last_idx] += std::string(" ") + defaults;
+          }
+        }
+        
+        // Get all option names
         std::vector<std::string> names(option.long_names);
         names.insert(names.end(), option.short_names.begin(), option.short_names.end());
 

@@ -80,6 +80,7 @@ namespace util
 
         std::string config_key;
         std::string description;
+        std::string default_values_description;
 
         flags_t flags;
 

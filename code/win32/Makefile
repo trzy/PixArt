@@ -5,11 +5,28 @@
 #
 
 ###############################################################################
+# Search Paths
+###############################################################################
+
+PROJECT_INCLUDE_DIRS = ..\arduino
+
+BOOST_INCLUDE_DIR = c:\boost\boost_1_69_0
+BOOST_LIB_DIR = c:\boost\boost_1_69_0\stage\lib
+
+OPENCV_INCLUDE_DIR = c:\opencv\builds\opencv-4.0.1\mingw\install\include
+OPENCV_LIB_DIR = c:\opencv\builds\opencv-4.0.1\mingw\install\x64\mingw\staticlib
+
+SDL2_INCLUDE_DIR = c:/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include
+SDL2_LIB_DIR = c:/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/lib
+
+INCLUDE_DIRS = $(PROJECT_INCLUDE_DIRS) $(BOOST_INCLUDE_DIR) $(OPENCV_INCLUDE_DIR) $(SDL2_INCLUDE_DIR)
+
+LIB_DIRS = $(BOOST_LIB_DIR) $(OPENCV_LIB_DIR) $(SDL2_LIB_DIR)
+
+###############################################################################
 # Libraries
 ###############################################################################
 
-INCLUDE_DIRS = c:\boost\boost_1_69_0 c:\opencv\builds\opencv-4.0.1\mingw\install\include ..\arduino
-LIB_DIRS = c:\opencv\builds\opencv-4.0.1\mingw\install\x64\mingw\staticlib c:\boost\boost_1_69_0\stage\lib c:/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/lib
 LIBS_WIN32API = gdi32 comdlg32
 LIBS_NETWORKING = ws2_32 wsock32
 LIBS_OPENCV = opencv_objdetect401 opencv_imgcodecs401 opencv_imgproc401 opencv_highgui401 opencv_core401 libtiff libjpeg-turbo libwebp libpng libjasper IlmImf zlib

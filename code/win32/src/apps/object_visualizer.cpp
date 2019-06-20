@@ -10,13 +10,10 @@
 #include "serial/serial_port.hpp"
 #include "util/logging.hpp"
 #include "util/command_line.hpp"
+#include <SDL2/SDL.h>
 #include <cstdio>
 #include <chrono>
 #include <map>
-
-static util::config::Node s_config("Global");
-static constexpr const char *k_port = "Arduino/SerialPort/PortName";
-static constexpr const char *k_baud = "Arduino/SerialPort/BaudRate";
 
 static double compute_frame_period_seconds(uint32_t frame_period_reg)
 {
@@ -130,14 +127,14 @@ static void render_ascii_image(const PA_object objs[16])
     image[y][98] = '\n';
   }
   image[98][0] = 0;
-  
+
   // Draw objects into buffer
   for (int i = 0; i < 16; i++)
   {
     char symbol = i < 10 ? ('0' + i) : ('a' + i - 10);
     objs[i].render_ascii((char *) image, 98 + 1, symbol);
   }
-  
+
   printf("Sensor Frame\n");
   printf("------------\n");
   printf(&image[0][0]);
@@ -165,7 +162,7 @@ static void print_objects(const PA_object objs[16])
   }
 }
 
-static void render_frames(serial_port *port)
+static void render_frame_ascii(serial_port *port)
 {
   packet_reader reader(
     [&](uint8_t *buffer, size_t size) -> size_t
@@ -177,14 +174,14 @@ static void render_frames(serial_port *port)
       if (id == PacketID::ObjectReport)
       {
         const object_report_packet *response = reinterpret_cast<const object_report_packet *>(buffer);
-        
+
         // Decode objects
         PA_object objs[16];
         for (int i = 0; i < 16; i++)
         {
           objs[i].load(&response->data[i * 16], response->format);
         }
-        
+
         // Draw them and print object information
         render_ascii_image(objs);
         print_objects(objs);
@@ -199,17 +196,115 @@ static void render_frames(serial_port *port)
   reader.wait_for_packets(1);
 }
 
+static void render_frames(serial_port *port, SDL_Window *window)
+{
+  const struct
+  {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+  } colors[] =
+  {
+    { 0xff, 0x00, 0x00 },
+    { 0x00, 0xff, 0x00 },
+    { 0x00, 0x00, 0xff },
+    { 0x00, 0xff, 0xff },
+    { 0xff, 0x00, 0xff },
+    { 0xff, 0xff, 0x00 },
+    { 0xff, 0xff, 0xff },
+    { 0xff, 0x80, 0x00 },
+
+    { 0x7f, 0x00, 0x00 },
+    { 0x00, 0x7f, 0x00 },
+    { 0x00, 0x00, 0x7f },
+    { 0x00, 0x7f, 0x7f },
+    { 0x7f, 0x00, 0x7f },
+    { 0x7f, 0x7f, 0x00 },
+    { 0x7f, 0x7f, 0x7f },
+    { 0x7f, 0x40, 0x00 }
+  };
+
+  int width;
+  int height;
+  SDL_GetWindowSize(window, &width, &height);
+  float scale_x = width / 98;
+  float scale_y = height / 98;
+
+  object_report_request_packet request;
+
+  packet_reader reader(
+    [&](uint8_t *buffer, size_t size) -> size_t
+    {
+      return port->read(buffer, size);
+    },
+    [&](PacketID id, const uint8_t *buffer, size_t size) -> bool
+    {
+      if (id == PacketID::ObjectReport)
+      {
+        const object_report_packet *response = reinterpret_cast<const object_report_packet *>(buffer);
+
+        // Request next
+        port->write(request);
+
+        // Clear window
+        SDL_Surface *surface = SDL_GetWindowSurface(window);
+        SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 0, 0, 0));
+
+        // Decode objects and draw objects
+        PA_object objs[16];
+        for (int i = 0; i < 16; i++)
+        {
+          objs[i].load(&response->data[i * 16], response->format);
+          SDL_Rect rect;
+          rect.x = int(scale_x * objs[i].boundary_left);
+          rect.y = int(scale_y * objs[i].boundary_up);
+          rect.w = int(scale_x * (objs[i].boundary_right - objs[i].boundary_left));
+          rect.h = int(scale_y * (objs[i].boundary_down - objs[i].boundary_up));
+          SDL_FillRect(surface, &rect, SDL_MapRGB(surface->format, colors[i].r, colors[i].g, colors[i].b));
+        }
+        SDL_UpdateWindowSurface(window);
+
+        return true;
+      }
+      return false;
+    }
+  );
+
+  port->write(request);
+  bool quit = false;
+  SDL_Event e;
+  while (!quit)
+  {
+    reader.tick();
+
+    while (SDL_PollEvent(&e) != 0)
+    {
+      if (e.type == SDL_QUIT)
+      {
+        quit = true;
+      }
+    }
+  }
+  //reader.wait_for_packets(1);
+}
+
 int main(int argc, char **argv)
 {
+  util::config::Node config("Global");
+  constexpr const char *k_port = "Arduino/SerialPort/PortName";
+  constexpr const char *k_baud = "Arduino/SerialPort/BaudRate";
+  constexpr const char *k_res2d = "SensorFrameWindow/Resolution";
+
   {
     using namespace util::command_line;
     std::vector<option_definition> options
     {
       switch_option({{ "--help" }}, {{ "-?", "-h", "-help" }}, "ShowHelp", "Print this help text."),
       default_valued_option("--port", string("name"), "COM3", k_port, "Serial port to connect on."),
-      default_valued_option("--baud", integer("rate", 300, 115200), "115200", k_baud, "Baud rate.")
+      default_valued_option("--baud", integer("rate", 300, 115200), "115200", k_baud, "Baud rate."),
+      default_multivalued_option("--res-2d", { integer("width"), integer("height") }, "392,392", k_res2d, "Resolution of 2D object view window.")
     };
-    auto state = parse_command_line(&s_config, options, argc, argv);
+    auto state = parse_command_line(&config, options, argc, argv);
     if (state.exit)
     {
       return state.parse_error ? 1 : 0;
@@ -218,13 +313,36 @@ int main(int argc, char **argv)
 
   try
   {
-    serial_port arduino_port(s_config[k_port].Value<std::string>(), s_config[k_baud].ValueAs<unsigned>());
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+      LOG_ERROR("SDL failed to initialize: " << SDL_GetError());
+      return 1;
+    }
+
+    SDL_Window *obj_window = SDL_CreateWindow(
+      "PixArt Object View",
+      SDL_WINDOWPOS_UNDEFINED,
+      SDL_WINDOWPOS_UNDEFINED,
+      config[k_res2d]["width"].ValueAs<int>(),
+      config[k_res2d]["height"].ValueAs<int>(),
+      SDL_WINDOW_SHOWN);
+
+    if (obj_window == nullptr)
+    {
+      LOG_ERROR("Failed to create object view window: " << SDL_GetError());
+    }
+
+    serial_port arduino_port(config[k_port].Value<std::string>(), config[k_baud].ValueAs<unsigned>());
     print_sensor_settings(&arduino_port);
-    render_frames(&arduino_port);
+    render_frames(&arduino_port, obj_window);
+
+    SDL_DestroyWindow(obj_window);
+    SDL_Quit();
   }
   catch (std::exception& e)
   {
     LOG_ERROR("Exception caught: " << e.what());
+    return 1;
   }
 
   return 0;

@@ -11,4 +11,6 @@ SRC_FILES_object_visualizer = \
 	src/util/command_line.cpp \
 	src/apps/object_visualizer.cpp
 
+LDFLAGS_object_visualizer = -lmingw32 -lSDL2main -lSDL2
+
 PROGRAMS += object_visualizer

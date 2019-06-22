@@ -9,7 +9,9 @@ SRC_FILES_object_visualizer = \
 	src/util/format.cpp \
 	src/util/config.cpp \
 	src/util/command_line.cpp \
-	src/apps/object_visualizer.cpp
+	src/apps/object_visualizer/print_objects.cpp \
+	src/apps/object_visualizer/print_sensor_settings.cpp \
+	src/apps/object_visualizer/main.cpp
 
 LDFLAGS_object_visualizer = -lmingw32 -lSDL2main -lSDL2
 

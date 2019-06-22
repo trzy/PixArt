@@ -688,7 +688,7 @@ namespace util
         parse_error |= validate_required_options_found(options, options_found);
       }
 
-      parser_state state = { should_exit | parse_error, parse_error };
+      parser_state state = { should_exit || parse_error, parse_error };
       return state;
     }
 

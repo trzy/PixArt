@@ -10,14 +10,16 @@
 #include "arduino/packet_reader.hpp"
 #include "pa_driver/packets.hpp"
 #include "pa_driver/pixart_object.hpp"
+#include "apps/object_visualizer/window.hpp"
 #include "apps/object_visualizer/print_sensor_settings.hpp"
 #include "apps/object_visualizer/print_objects.hpp"
 #include <SDL2/SDL.h>
 #include <cstdio>
 #include <chrono>
+#include <memory>
 #include <map>
 
-static void render_frames(serial_port *port, SDL_Window *window)
+static void render_frames(serial_port *port, const std::shared_ptr<i_window> &window)
 {
   const struct
   {
@@ -45,11 +47,8 @@ static void render_frames(serial_port *port, SDL_Window *window)
     { 0x7f, 0x40, 0x00 }
   };
 
-  int width;
-  int height;
-  SDL_GetWindowSize(window, &width, &height);
-  float scale_x = width / 98;
-  float scale_y = height / 98;
+  float scale_x = window->width() / 98;
+  float scale_y = window->height() / 98;
 
   object_report_request_packet request;
 
@@ -68,8 +67,7 @@ static void render_frames(serial_port *port, SDL_Window *window)
         port->write(request);
 
         // Clear window
-        SDL_Surface *surface = SDL_GetWindowSurface(window);
-        SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 0, 0, 0));
+        window->clear();
 
         // Decode objects and draw objects
         PA_object objs[16];
@@ -81,10 +79,10 @@ static void render_frames(serial_port *port, SDL_Window *window)
           rect.y = int(scale_y * objs[i].boundary_up);
           rect.w = int(scale_x * (objs[i].boundary_right - objs[i].boundary_left));
           rect.h = int(scale_y * (objs[i].boundary_down - objs[i].boundary_up));
-          SDL_FillRect(surface, &rect, SDL_MapRGB(surface->format, colors[i].r, colors[i].g, colors[i].b));
+          window->draw_rectangle(rect, colors[i].r, colors[i].g, colors[i].b);
         }
-        SDL_UpdateWindowSurface(window);
 
+        window->update();
         return true;
       }
       return false;
@@ -126,7 +124,7 @@ int main(int argc, char **argv)
       default_valued_option("--port", string("name"), "COM3", k_port, "Serial port to connect on."),
       default_valued_option("--baud", integer("rate", 300, 115200), "115200", k_baud, "Baud rate."),
       default_valued_option("--settings", util::command_line::boolean(), "true", k_print_settings, "Print PixArt sensor settings."),
-      default_valued_option("--view-objects", util::command_line::boolean(), "true", k_view_objs, "View objects in real-time."),
+      default_valued_option("--view-objects", util::command_line::boolean(), "true", k_view_objs, "Schematic view of detected objects in sensor frame."),
       default_multivalued_option("--res-2d", { integer("width"), integer("height") }, "392,392", k_res2d, "Resolution of 2D object view window."),
       switch_option({ "--print-objects" }, k_print_objs, "Print objects for single frame.")
     };
@@ -138,7 +136,38 @@ int main(int argc, char **argv)
   }
 
   int error = 0;
-  SDL_Window *obj_window = nullptr;
+
+  /*
+  SDL_Window *gl_window = nullptr;
+
+  gl_window = SDL_CreateWindow(
+    "3D View",
+    SDL_WINDOWPOS_UNDEFINED,
+    SDL_WINDOWPOS_UNDEFINED,
+    640,
+    480,
+    SDL_WINDOW_OPENGL);
+  SDL_GLContext ctx = SDL_GL_CreateContext(gl_window);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetSwapInterval(1);
+
+  glClearColor(1.0, 0.0, 0.5, 1.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+  SDL_GL_SwapWindow(gl_window);
+
+  std::chrono::high_resolution_clock::time_point t0 = std::chrono::high_resolution_clock::now();
+  double elapsed;
+  do
+  {
+    std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration<double>(now - t0).count();
+  } while (elapsed < 2);
+
+  SDL_GL_DeleteContext(ctx);
+  SDL_DestroyWindow(gl_window);
+  */
+
 
   try
   {
@@ -148,20 +177,10 @@ int main(int argc, char **argv)
       return 1;
     }
 
+    std::shared_ptr<i_window> obj_window;
     if (config[k_view_objs].ValueAs<bool>())
     {
-      obj_window = SDL_CreateWindow(
-        "PixArt Object View",
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-        config[k_res2d]["width"].ValueAs<int>(),
-        config[k_res2d]["height"].ValueAs<int>(),
-        SDL_WINDOW_SHOWN);
-
-      if (obj_window == nullptr)
-      {
-        LOG_ERROR("Failed to create object view window: " << SDL_GetError());
-      }
+      obj_window = std::make_shared<window_2d>("PixArt Object View", config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
     }
 
     serial_port arduino_port(config[k_port].Value<std::string>(), config[k_baud].ValueAs<unsigned>());
@@ -176,7 +195,7 @@ int main(int argc, char **argv)
       print_objects(&arduino_port);
     }
 
-    if (obj_window != nullptr)
+    if (obj_window)
     {
       render_frames(&arduino_port, obj_window);
     }
@@ -187,10 +206,6 @@ int main(int argc, char **argv)
     error = 1;
   }
 
-  if (obj_window != nullptr)
-  {
-    SDL_DestroyWindow(obj_window);
-  }
   SDL_Quit();
 
   return error;

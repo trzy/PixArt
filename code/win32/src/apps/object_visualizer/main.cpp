@@ -137,38 +137,6 @@ int main(int argc, char **argv)
 
   int error = 0;
 
-  /*
-  SDL_Window *gl_window = nullptr;
-
-  gl_window = SDL_CreateWindow(
-    "3D View",
-    SDL_WINDOWPOS_UNDEFINED,
-    SDL_WINDOWPOS_UNDEFINED,
-    640,
-    480,
-    SDL_WINDOW_OPENGL);
-  SDL_GLContext ctx = SDL_GL_CreateContext(gl_window);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  SDL_GL_SetSwapInterval(1);
-
-  glClearColor(1.0, 0.0, 0.5, 1.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-  SDL_GL_SwapWindow(gl_window);
-
-  std::chrono::high_resolution_clock::time_point t0 = std::chrono::high_resolution_clock::now();
-  double elapsed;
-  do
-  {
-    std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration<double>(now - t0).count();
-  } while (elapsed < 2);
-
-  SDL_GL_DeleteContext(ctx);
-  SDL_DestroyWindow(gl_window);
-  */
-
-
   try
   {
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -180,7 +148,7 @@ int main(int argc, char **argv)
     std::shared_ptr<i_window> obj_window;
     if (config[k_view_objs].ValueAs<bool>())
     {
-      obj_window = std::make_shared<window_2d>("PixArt Object View", config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
+      obj_window = std::make_shared<window_3d>("PixArt Object View", config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
     }
 
     serial_port arduino_port(config[k_port].Value<std::string>(), config[k_baud].ValueAs<unsigned>());

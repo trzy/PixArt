@@ -1,7 +1,12 @@
 #include "apps/object_visualizer/window.hpp"
-#include <SDL2/SDL.h>
 #include <GL/gl.h>
 #include <stdexcept>
+
+/*
+ * window_2d:
+ *
+ * 2D window with bitmapped surface.
+ */
 
 window_2d::window_2d(const char *title, int width, int height)
   : m_window(SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_SHOWN)),
@@ -44,4 +49,81 @@ void window_2d::draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8
 void window_2d::update()
 {
   SDL_UpdateWindowSurface(m_window);
+}
+
+/*
+ * window_3d:
+ *
+ * OpenGL window.
+ */
+
+window_3d::window_3d(const char *title, int width, int height)
+  : m_window(SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL)),
+    m_width(width),
+    m_height(height)
+{
+  if (!m_window)
+  {
+    throw std::runtime_error("Failed to create window");
+  }
+
+  m_ctx = SDL_GL_CreateContext(m_window);
+  //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetSwapInterval(1);
+
+  glClearColor(0, 0, 0, 1);
+  glViewport(0, 0, width, height);
+}
+
+window_3d::~window_3d()
+{
+  SDL_GL_DeleteContext(m_ctx);
+  SDL_DestroyWindow(m_window);
+}
+
+int window_3d::width() const
+{
+  return m_width;
+}
+
+int window_3d::height() const
+{
+  return m_height;
+}
+
+void window_3d::clear()
+{
+  glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void window_3d::draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8_t b)
+{
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0, 1, 1, 0, -1, 1);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_BLEND);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_LIGHTING);
+  glBegin(GL_QUADS);
+  glColor3f(r / 255.0f, g / 255.0f, b / 255.0f);
+  float xres = m_width;
+  float yres = m_height;
+  float left = rect.x / xres;
+  float right = (rect.x + rect.w) / xres;
+  float top = rect.y / yres;
+  float bottom = (rect.y + rect.h) / yres;
+  glVertex2f(left, top);
+  glVertex2f(right, top);
+  glVertex2f(right, bottom);
+  glVertex2f(left, bottom);
+  glEnd();
+}
+
+void window_3d::update()
+{
+  SDL_GL_SwapWindow(m_window);
 }

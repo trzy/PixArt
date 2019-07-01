@@ -1,10 +1,8 @@
 #ifndef INCLUDED_WINDOW_HPP
 #define INCLUDED_WINDOW_HPP
 
+#include <SDL2/SDL.h>
 #include <cstdint>
-
-struct SDL_Rect;
-struct SDL_Window;
 
 class i_window
 {
@@ -36,5 +34,24 @@ private:
   int m_width;
   int m_height;
 };
+
+class window_3d: public i_window
+{
+public:
+  window_3d(const char *title, int width, int height);
+  ~window_3d() override;
+  int width() const override;
+  int height() const override;
+  void clear() override;
+  void draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8_t b) override;
+  void update() override;
+
+private:
+  SDL_Window *m_window;
+  SDL_GLContext m_ctx;
+  int m_width;
+  int m_height;
+};
+
 
 #endif  // INCLUDED_WINDOW_HPP

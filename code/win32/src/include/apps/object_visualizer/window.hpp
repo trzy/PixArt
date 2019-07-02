@@ -1,8 +1,10 @@
 #ifndef INCLUDED_WINDOW_HPP
 #define INCLUDED_WINDOW_HPP
 
+#include "pa_driver/pixart_object.hpp"
 #include <SDL2/SDL.h>
 #include <cstdint>
+#include <array>
 
 class i_window
 {
@@ -13,9 +15,12 @@ public:
 
   virtual int width() const = 0;
   virtual int height() const = 0;
+  virtual void update(const std::array<PA_object, 16> &objs) = 0;
+  virtual void blit() = 0;
+
+protected:
   virtual void clear() = 0;
   virtual void draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8_t b) = 0;
-  virtual void update() = 0;
 };
 
 class window_2d: public i_window
@@ -23,11 +28,19 @@ class window_2d: public i_window
 public:
   window_2d(const char *title, int width, int height);
   ~window_2d() override;
+
   int width() const override;
   int height() const override;
+
+  virtual void update(const std::array<PA_object, 16> &objs) override
+  {
+  }
+
+  void blit() override;
+
+protected:
   void clear() override;
   void draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8_t b) override;
-  void update() override;
 
 private:
   SDL_Window *m_window;
@@ -40,11 +53,19 @@ class window_3d: public i_window
 public:
   window_3d(const char *title, int width, int height);
   ~window_3d() override;
+
   int width() const override;
   int height() const override;
+
+  virtual void update(const std::array<PA_object, 16> &objs) override
+  {
+  }
+
+  void blit() override;
+
+protected:
   void clear() override;
   void draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8_t b) override;
-  void update() override;
 
 private:
   SDL_Window *m_window;
@@ -52,6 +73,5 @@ private:
   int m_width;
   int m_height;
 };
-
 
 #endif  // INCLUDED_WINDOW_HPP

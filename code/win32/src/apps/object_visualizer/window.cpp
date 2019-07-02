@@ -46,7 +46,7 @@ void window_2d::draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8
   SDL_FillRect(surface, &rect, SDL_MapRGB(surface->format, r, g, b));
 }
 
-void window_2d::update()
+void window_2d::blit()
 {
   SDL_UpdateWindowSurface(m_window);
 }
@@ -123,7 +123,7 @@ void window_3d::draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8
   glEnd();
 }
 
-void window_3d::update()
+void window_3d::blit()
 {
   SDL_GL_SwapWindow(m_window);
 }

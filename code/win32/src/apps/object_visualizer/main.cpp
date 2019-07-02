@@ -19,37 +19,61 @@
 #include <memory>
 #include <map>
 
+class object_window: public window_3d
+{
+public:
+  object_window(int width, int height)
+    : window_3d("PixArt Object View", width, height)
+  {
+  }
+
+  void update(const std::array<PA_object, 16> &objs) override
+  {
+    static const struct
+    {
+      uint8_t r;
+      uint8_t g;
+      uint8_t b;
+    } colors[] =
+    {
+      { 0xff, 0x00, 0x00 },
+      { 0x00, 0xff, 0x00 },
+      { 0x00, 0x00, 0xff },
+      { 0x00, 0xff, 0xff },
+      { 0xff, 0x00, 0xff },
+      { 0xff, 0xff, 0x00 },
+      { 0xff, 0xff, 0xff },
+      { 0xff, 0x80, 0x00 },
+
+      { 0x7f, 0x00, 0x00 },
+      { 0x00, 0x7f, 0x00 },
+      { 0x00, 0x00, 0x7f },
+      { 0x00, 0x7f, 0x7f },
+      { 0x7f, 0x00, 0x7f },
+      { 0x7f, 0x7f, 0x00 },
+      { 0x7f, 0x7f, 0x7f },
+      { 0x7f, 0x40, 0x00 }
+    };
+
+    float scale_x = width() / 98;
+    float scale_y = height() / 98;
+
+    clear();
+
+    for (size_t i = 0; i < objs.size(); i++)
+    {
+      SDL_Rect rect;
+      rect.x = int(scale_x * objs[i].boundary_left);
+      rect.y = int(scale_y * objs[i].boundary_up);
+      rect.w = int(scale_x * (objs[i].boundary_right - objs[i].boundary_left));
+      rect.h = int(scale_y * (objs[i].boundary_down - objs[i].boundary_up));
+      draw_rectangle(rect, colors[i].r, colors[i].g, colors[i].b);
+    }
+  }
+};
+
 static void render_frames(serial_port *port, const std::shared_ptr<i_window> &window)
 {
-  const struct
-  {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-  } colors[] =
-  {
-    { 0xff, 0x00, 0x00 },
-    { 0x00, 0xff, 0x00 },
-    { 0x00, 0x00, 0xff },
-    { 0x00, 0xff, 0xff },
-    { 0xff, 0x00, 0xff },
-    { 0xff, 0xff, 0x00 },
-    { 0xff, 0xff, 0xff },
-    { 0xff, 0x80, 0x00 },
-
-    { 0x7f, 0x00, 0x00 },
-    { 0x00, 0x7f, 0x00 },
-    { 0x00, 0x00, 0x7f },
-    { 0x00, 0x7f, 0x7f },
-    { 0x7f, 0x00, 0x7f },
-    { 0x7f, 0x7f, 0x00 },
-    { 0x7f, 0x7f, 0x7f },
-    { 0x7f, 0x40, 0x00 }
-  };
-
-  float scale_x = window->width() / 98;
-  float scale_y = window->height() / 98;
-
   object_report_request_packet request;
 
   packet_reader reader(
@@ -66,23 +90,16 @@ static void render_frames(serial_port *port, const std::shared_ptr<i_window> &wi
         // Request next
         port->write(request);
 
-        // Clear window
-        window->clear();
-
-        // Decode objects and draw objects
-        PA_object objs[16];
+        // Decode objects
+        std::array<PA_object, 16> objs;
         for (int i = 0; i < 16; i++)
         {
           objs[i].load(&response->data[i * 16], response->format);
-          SDL_Rect rect;
-          rect.x = int(scale_x * objs[i].boundary_left);
-          rect.y = int(scale_y * objs[i].boundary_up);
-          rect.w = int(scale_x * (objs[i].boundary_right - objs[i].boundary_left));
-          rect.h = int(scale_y * (objs[i].boundary_down - objs[i].boundary_up));
-          window->draw_rectangle(rect, colors[i].r, colors[i].g, colors[i].b);
         }
 
-        window->update();
+        // Update views
+        window->update(objs);
+        window->blit();
         return true;
       }
       return false;
@@ -148,7 +165,7 @@ int main(int argc, char **argv)
     std::shared_ptr<i_window> obj_window;
     if (config[k_view_objs].ValueAs<bool>())
     {
-      obj_window = std::make_shared<window_3d>("PixArt Object View", config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
+      obj_window = std::make_shared<object_window>(config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
     }
 
     serial_port arduino_port(config[k_port].Value<std::string>(), config[k_baud].ValueAs<unsigned>());

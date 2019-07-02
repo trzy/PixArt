@@ -72,7 +72,7 @@ public:
   }
 };
 
-static void render_frames(serial_port *port, const std::shared_ptr<i_window> &window)
+static void render_frames(serial_port *port, const std::vector<std::shared_ptr<i_window>> &windows)
 {
   object_report_request_packet request;
 
@@ -98,8 +98,16 @@ static void render_frames(serial_port *port, const std::shared_ptr<i_window> &wi
         }
 
         // Update views
-        window->update(objs);
-        window->blit();
+        for (auto &window: windows)
+        {
+          window->update(objs);
+        }
+        
+        for (auto &window: windows)
+        {
+          window->blit();
+        }
+
         return true;
       }
       return false;
@@ -162,10 +170,12 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    std::shared_ptr<i_window> obj_window;
+    std::vector<std::shared_ptr<i_window>> windows;
+    
     if (config[k_view_objs].ValueAs<bool>())
     {
-      obj_window = std::make_shared<object_window>(config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
+      auto window = std::make_shared<object_window>(config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
+      windows.push_back(window);
     }
 
     serial_port arduino_port(config[k_port].Value<std::string>(), config[k_baud].ValueAs<unsigned>());
@@ -180,9 +190,9 @@ int main(int argc, char **argv)
       print_objects(&arduino_port);
     }
 
-    if (obj_window)
+    if (windows.size() > 0)
     {
-      render_frames(&arduino_port, obj_window);
+      render_frames(&arduino_port, windows);
     }
   }
   catch (std::exception& e)

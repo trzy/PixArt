@@ -72,7 +72,7 @@ public:
   }
 };
 
-static void render_frames(serial_port *port, const std::vector<std::shared_ptr<i_window>> &windows)
+static void render_frames(i_serial_device *port, const std::vector<std::shared_ptr<i_window>> &windows)
 {
   object_report_request_packet request;
 

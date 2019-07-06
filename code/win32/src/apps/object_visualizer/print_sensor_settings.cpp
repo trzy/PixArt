@@ -1,6 +1,6 @@
 #include "pa_driver/packets.hpp"
 #include "arduino/packet_reader.hpp"
-#include "serial/serial_port.hpp"
+#include "serial/i_serial_device.hpp"
 #include <cstdio>
 #include <map>
 
@@ -11,7 +11,7 @@ static double compute_frame_period_seconds(uint32_t frame_period_reg)
   return period;
 }
 
-void print_sensor_settings(serial_port *port)
+void print_sensor_settings(i_serial_device *port)
 {
   struct
   {

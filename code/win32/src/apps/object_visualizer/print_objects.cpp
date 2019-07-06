@@ -1,7 +1,7 @@
 #include "pa_driver/pixart_object.hpp"
 #include "pa_driver/packets.hpp"
 #include "arduino/packet_reader.hpp"
-#include "serial/serial_port.hpp"
+#include "serial/i_serial_device.hpp"
 #include <cstdio>
 
 static void render_ascii_image(const PA_object objs[16])
@@ -49,7 +49,7 @@ static void print_objects(const PA_object objs[16])
   }
 }
 
-void print_objects(serial_port *port)
+void print_objects(i_serial_device *port)
 {
   packet_reader reader(
     [&](uint8_t *buffer, size_t size) -> size_t

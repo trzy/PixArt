@@ -17,6 +17,11 @@ void serial_replay_device::sync_to_block_boundary()
     uint32_t size = *(uint32_t *) &m_buffer[m_read_idx];
     m_read_idx += sizeof(uint32_t);
     m_next_block_idx = m_read_idx + size;
+
+    if (m_next_block_idx > m_buffer_size)
+    {
+      throw std::runtime_error(util::format() << "Encountered block exceeding file size in '" <<m_filename << "'. File is corrupt or has incorrect format.");
+    }
   }
 }
 
@@ -46,7 +51,7 @@ uint32_t serial_replay_device::read_from_block(uint8_t *buffer, uint32_t buf_siz
     }
     else
     {
-      throw std::runtime_error(util::format() << "Attempted to read past end of file '" << m_filename << "'. File is corrupt.");
+      throw std::runtime_error(util::format() << "Attempted to read past end of file '" << m_filename << "'. File is corrupt or has incorrect format.");
     }
   }
 
@@ -83,6 +88,10 @@ serial_replay_device::serial_replay_device(const std::string &replay_file)
     throw std::runtime_error(util::format() << "Failed to read from '" << replay_file << "'");
   }
   file.close();
+  if (m_buffer_size < 4)
+  {
+    throw std::runtime_error(util::format() << "File '" << replay_file << "' appears to have incorrect format");
+  }
   sync_to_block_boundary();
 }
 

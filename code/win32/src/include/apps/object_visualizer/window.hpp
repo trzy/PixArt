@@ -64,6 +64,7 @@ public:
   void blit() override;
 
 protected:
+  void set_context();
   void clear() override;
   void draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8_t b) override;
 

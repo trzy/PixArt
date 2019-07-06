@@ -92,13 +92,20 @@ int window_3d::height() const
   return m_height;
 }
 
+void window_3d::set_context()
+{
+  SDL_GL_MakeCurrent(m_window, m_ctx);
+}
+
 void window_3d::clear()
 {
+  set_context();
   glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void window_3d::draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8_t b)
 {
+  set_context();
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   glOrtho(0, 1, 1, 0, -1, 1);
@@ -125,5 +132,6 @@ void window_3d::draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8
 
 void window_3d::blit()
 {
+  set_context();
   SDL_GL_SwapWindow(m_window);
 }

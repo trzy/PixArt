@@ -7,6 +7,7 @@
 #include "util/logging.hpp"
 #include "util/command_line.hpp"
 #include "serial/serial_port.hpp"
+#include "serial/serial_replay_device.hpp"
 #include "arduino/packet_reader.hpp"
 #include "pa_driver/packets.hpp"
 #include "pa_driver/pixart_object.hpp"
@@ -18,6 +19,15 @@
 #include <chrono>
 #include <memory>
 #include <map>
+
+static constexpr const char *k_port = "Arduino/SerialPort/PortName";
+static constexpr const char *k_baud = "Arduino/SerialPort/BaudRate";
+static constexpr const char *k_record_to = "Arduino/SerialPort/Record";
+static constexpr const char *k_replay_from = "Arduino/SerialPort/Replay";
+static constexpr const char *k_print_settings = "SettingsPrintout/Enabled";
+static constexpr const char *k_view_objs = "ObjectViewWindow/Enabled";
+static constexpr const char *k_res2d = "ObjectViewWindow/Resolution";
+static constexpr const char *k_print_objs = "ObjectASCIIPrintout/Enabled";
 
 class object_window: public window_3d
 {
@@ -131,15 +141,40 @@ static void render_frames(i_serial_device *port, const std::vector<std::shared_p
   }
 }
 
+static std::shared_ptr<i_serial_device> create_serial_connection(const util::config::Node &config)
+{
+  const std::string port_name = config[k_port].Value<std::string>();
+  const unsigned baud = config[k_baud].ValueAs<unsigned>();
+  
+  bool record = config[k_record_to].Exists();
+  bool replay = config[k_replay_from].Exists();
+  
+  if (record && replay)
+  {
+    throw std::logic_error("Record and replay options are mutually exclusive");
+  }
+  else if (replay)
+  {
+    std::string file = config[k_replay_from].ValueAs<std::string>();
+    auto replayer = std::make_shared<serial_replay_device>(file);
+    LOG_INFO("Replaying from '" << file << "'...\n");
+    return replayer;
+  }
+  else if (record)
+  {
+    std::string file = config[k_record_to].ValueAs<std::string>();
+    std::unique_ptr<serial_port> port = std::make_unique<serial_port>(port_name, baud);
+    std::shared_ptr<serial_replay_device> recorder = std::make_shared<serial_replay_device>(file, std::move(port));
+    LOG_INFO("Recording " << port_name << " to '" << file << "'...\n");
+    return recorder;
+  }
+  
+  return std::make_shared<serial_port>(port_name, baud);
+}
+
 int main(int argc, char **argv)
 {
   util::config::Node config("Global");
-  constexpr const char *k_port = "Arduino/SerialPort/PortName";
-  constexpr const char *k_baud = "Arduino/SerialPort/BaudRate";
-  constexpr const char *k_print_settings = "SettingsPrintout/Enabled";
-  constexpr const char *k_view_objs = "ObjectViewWindow/Enabled";
-  constexpr const char *k_res2d = "ObjectViewWindow/Resolution";
-  constexpr const char *k_print_objs = "ObjectASCIIPrintout/Enabled";
 
   {
     using namespace util::command_line;
@@ -148,6 +183,8 @@ int main(int argc, char **argv)
       switch_option({{ "--help" }}, {{ "-?", "-h", "-help" }}, "ShowHelp", "Print this help text."),
       default_valued_option("--port", string("name"), "COM3", k_port, "Serial port to connect on."),
       default_valued_option("--baud", integer("rate", 300, 115200), "115200", k_baud, "Baud rate."),
+      valued_option("--record-to", string("file"), k_record_to, "Capture a recording of the serial port data."),
+      valued_option("--replay-from", string("file"), k_replay_from, "Replay captured serial port data."),
       default_valued_option("--settings", util::command_line::boolean(), "true", k_print_settings, "Print PixArt sensor settings."),
       default_valued_option("--view-objects", util::command_line::boolean(), "true", k_view_objs, "Schematic view of detected objects in sensor frame."),
       default_multivalued_option("--res-2d", { integer("width"), integer("height") }, "392,392", k_res2d, "Resolution of 2D object view window."),
@@ -178,21 +215,21 @@ int main(int argc, char **argv)
       windows.push_back(window);
     }
 
-    serial_port arduino_port(config[k_port].Value<std::string>(), config[k_baud].ValueAs<unsigned>());
+    std::shared_ptr<i_serial_device> arduino_port = create_serial_connection(config);
 
     if (config[k_print_settings].ValueAs<bool>())
     {
-      print_sensor_settings(&arduino_port);
+      print_sensor_settings(arduino_port.get());
     }
 
     if (config[k_print_objs].ValueAs<bool>())
     {
-      print_objects(&arduino_port);
+      print_objects(arduino_port.get());
     }
 
     if (windows.size() > 0)
     {
-      render_frames(&arduino_port, windows);
+      render_frames(arduino_port.get(), windows);
     }
   }
   catch (std::exception& e)

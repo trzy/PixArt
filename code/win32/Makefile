@@ -29,7 +29,7 @@ LIB_DIRS = $(BOOST_LIB_DIR) $(OPENCV_LIB_DIR) $(SDL2_LIB_DIR)
 
 LIBS_WIN32API = gdi32 comdlg32
 LIBS_NETWORKING = ws2_32 wsock32
-LIBS_OPENGL = opengl32
+LIBS_OPENGL = opengl32 glu32
 LIBS_OPENCV = opencv_calib3d401 opencv_objdetect401 opencv_imgcodecs401 opencv_imgproc401 opencv_highgui401 opencv_core401 libtiff libjpeg-turbo libwebp libpng libjasper IlmImf zlib
 LIBS_BOOST = boost_filesystem-mgw81-mt-s-x64-1_69
 LIBS_UNIT_TEST = boost_unit_test_framework-mgw81-mt-s-x64-1_69

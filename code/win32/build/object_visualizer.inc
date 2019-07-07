@@ -11,6 +11,7 @@ SRC_FILES_object_visualizer = \
 	src/apps/object_visualizer/print_objects.cpp \
 	src/apps/object_visualizer/print_sensor_settings.cpp \
 	src/apps/object_visualizer/window.cpp \
+	src/apps/object_visualizer/render.cpp \
 	../arduino/pa_driver/pixart_object.cpp \
 	src/serial/serial_port.cpp \
 	src/apps/object_visualizer/main.cpp

@@ -12,11 +12,10 @@
 #include "pa_driver/packets.hpp"
 #include "pa_driver/pixart_object.hpp"
 #include "apps/object_visualizer/window.hpp"
+#include "apps/object_visualizer/render.hpp"
 #include "apps/object_visualizer/print_sensor_settings.hpp"
 #include "apps/object_visualizer/print_objects.hpp"
 #include <SDL2/SDL.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
 #include <cstdio>
 #include <chrono>
 #include <memory>
@@ -34,215 +33,6 @@ static constexpr const char *k_res2d = "ObjectViewWindow/Resolution";
 static constexpr const char *k_view_3d = "PerspectiveViewWindow/Enabled";
 static constexpr const char *k_res3d = "PerspectiveViewWindow/Resolution";
 
-struct vector3
-{
-  float x = 0;
-  float y = 0;
-  float z = 0;
-
-  static vector3 zero()
-  {
-    return vector3(0, 0, 0);
-  }
-
-  static vector3 one()
-  {
-    return vector3(1, 1, 1);
-  }
-
-  static vector3 right()
-  {
-    return vector3(1, 0, 0);
-  }
-
-  static vector3 up()
-  {
-    return vector3(0, 1, 0);
-  }
-
-  static vector3 forward()
-  {
-    return vector3(0, 0, -1);
-  }
-
-  vector3(float in_x, float in_y, float in_z)
-    : x(in_x),
-      y(in_y),
-      z(in_z)
-  {
-  }
-
-  vector3()
-  {
-  }
-
-  vector3 operator+(const vector3 &rhs) const
-  {
-    return vector3(x + rhs.x, y + rhs.y, z + rhs.z);
-  }
-
-  vector3 operator*(float scalar) const
-  {
-    return vector3(x * scalar, y * scalar, z * scalar);
-  }
-};
-
-struct euler3: public vector3
-{
-  static euler3 zero()
-  {
-    return euler3(0, 0, 0);
-  }
-
-  static euler3 right()
-  {
-    return euler3(1, 0, 0);
-  }
-
-  static euler3 up()
-  {
-    return euler3(0, 1, 0);
-  }
-
-  static euler3 forward()
-  {
-    return euler3(0, 0, -1);
-  }
-
-  euler3(float x, float y, float z)
-    : vector3(x, y, z)
-  {
-  }
-
-  euler3 operator*(float scalar) const
-  {
-    return euler3(x * scalar, y * scalar, z * scalar);
-  }
-};
-
-struct color3
-{
-  float r;
-  float g;
-  float b;
-
-  static color3 black()
-  {
-    return color3(0, 0, 0);
-  }
-
-  static color3 white()
-  {
-    return color3(1, 1, 1);
-  }
-
-  static color3 gray()
-  {
-    return color3(0.5f, 0.5f, 0.5f);
-  }
-
-  static color3 red()
-  {
-    return color3(1, 0, 0);
-  }
-
-  static color3 green()
-  {
-    return color3(0, 1, 0);
-  }
-
-  static color3 blue()
-  {
-    return color3(0, 0, 1);
-  }
-
-  color3(float in_r, float in_g, float in_b)
-    : r(in_r),
-      g(in_g),
-      b(in_b)
-  {
-  }
-};
-
-namespace node
-{
-  struct transform
-  {
-    transform(vector3 position, vector3 scale, euler3 rotation)
-    {
-      glPushMatrix();
-      glTranslatef(position.x, position.y, position.z);
-      glRotatef(rotation.z, 0, 0, 1);
-      glRotatef(rotation.y, 0, 1, 0);
-      glRotatef(rotation.x, 1, 0, 0);
-      glScalef(scale.x, scale.y, scale.z);
-    }
-
-    ~transform()
-    {
-      glPopMatrix();
-    }
-  };
-
-  struct translate: public transform
-  {
-    translate(vector3 position)
-      : transform(position, vector3::one(), euler3::zero())
-    {
-    }
-  };
-
-  struct scale: public transform
-  {
-    scale(vector3 dimensions)
-      : transform(vector3::zero(), dimensions, euler3::zero())
-    {
-    }
-  };
-
-  struct rotate: public transform
-  {
-    rotate(euler3 rotation)
-      : transform(vector3::zero(), vector3::one(), rotation)
-    {
-    }
-  };
-
-  class box
-  {
-  public:
-    box(vector3 position, vector3 scale, euler3 rotation, color3 color)
-    {
-      draw(position, scale, rotation, color);
-    }
-
-    ~box()
-    {
-      glPopMatrix();
-    }
-
-  private:
-    void draw(vector3 position, vector3 scale, euler3 rotation, color3 color)
-    {
-      glPushMatrix();
-      glTranslatef(position.x, position.y, position.z);
-      glRotatef(rotation.z, 0, 0, 1);
-      glRotatef(rotation.y, 0, 1, 0);
-      glRotatef(rotation.x, 1, 0, 0);
-      glScalef(scale.x, scale.y, scale.z);
-      glBegin(GL_QUADS);
-      glColor3f(color.r, color.g, color.b);
-      glVertex3f(-0.5f, 0.5f, 0.5f); glVertex3f(0.5f, 0.5f, 0.5f); glVertex3f(0.5f, -0.5f, 0.5f); glVertex3f(-0.5f, -0.5f, 0.5f);     // front
-      glVertex3f(0.5f, 0.5f, -0.5f); glVertex3f(-0.5f, 0.5f, -0.5f); glVertex3f(-0.5f, -0.5f, -0.5f); glVertex3f(0.5f, -0.5f, -0.5f); // back
-      glVertex3f(-0.5f, 0.5f, -0.5f); glVertex3f(0.5f, 0.5f, -0.5f); glVertex3f(0.5f, 0.5f, 0.5f); glVertex3f(-0.5f, 0.5f, 0.5f);     // top
-      glVertex3f(-0.5f, -0.5f, 0.5f); glVertex3f(0.5f, -0.5f, 0.5f); glVertex3f(0.5f, -0.5f, -0.5f); glVertex3f(-0.5f, -0.5f, -0.5f); // bottom
-      glVertex3f(-0.5f, 0.5f, -0.5f); glVertex3f(-0.5f, 0.5f, 0.5f); glVertex3f(-0.5f, -0.5f, 0.5f); glVertex3f(-0.5f, -0.5f, -0.5f); // left
-      glVertex3f(0.5f, 0.5f, 0.5f); glVertex3f(0.5f, 0.5f, -0.5f); glVertex3f(0.5f, -0.5f, -0.5f); glVertex3f(0.5f, -0.5f, 0.5f);     // right
-      glEnd();
-    }
-  };
-}
-
 class perspective_window: public window_3d
 {
 public:
@@ -254,11 +44,12 @@ public:
   void update(const std::array<PA_object, 16> &objs) override
   {
     clear();
-    perspective(60);
-    camera(vector3(0, -1.5, 0), vector3(30, 0, 0));
+
     {
-
-
+      using namespace render;
+      float horizontal_fov = 60;
+      float aspect = float(width()) / float(height());
+      set_camera(60, aspect, vector3(0, -1.5, 0), vector3(30, 0, 0));
 
       {
         node::transform transform(vector3::forward() * m_distance, vector3::one(), euler3::up() * m_ya);
@@ -283,7 +74,7 @@ public:
         }
       }
     }
-    //box(vector3(0, 0, -m_distance), vector3(0, m_ya, 0), 1);
+
     m_distance += .01f;
     m_ya += 1;
   }
@@ -291,35 +82,6 @@ public:
 private:
   float m_distance = 0;
   float m_ya = 0;
-
-  static constexpr float pi()
-  {
-    return (float) std::atan(1) * 4;
-  }
-
-  static float deg2rad(float angle)
-  {
-    return angle * pi() / 180;
-  }
-
-  void perspective(float fov)
-  {
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    float aspect = float(width()) / float(height());
-    float fov_y = fov * aspect;
-    gluPerspective(fov_y, (GLfloat) aspect, 0.1f, 1e2f);
-  }
-
-  void camera(vector3 position, vector3 euler)
-  {
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glRotatef(-euler.z, 0, 0, 1);
-    glRotatef(-euler.y, 0, 1, 0);
-    glRotatef(-euler.x, 1, 0, 0);
-    glTranslatef(-position.x, -position.y, -position.z);
-  }
 };
 
 class object_window: public window_3d

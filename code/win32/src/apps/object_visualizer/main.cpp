@@ -50,6 +50,21 @@ struct vector3
     return vector3(1, 1, 1);
   }
 
+  static vector3 right()
+  {
+    return vector3(1, 0, 0);
+  }
+
+  static vector3 up()
+  {
+    return vector3(0, 1, 0);
+  }
+
+  static vector3 forward()
+  {
+    return vector3(0, 0, -1);
+  }
+
   vector3(float in_x, float in_y, float in_z)
     : x(in_x),
       y(in_y),
@@ -72,6 +87,162 @@ struct vector3
   }
 };
 
+struct euler3: public vector3
+{
+  static euler3 zero()
+  {
+    return euler3(0, 0, 0);
+  }
+
+  static euler3 right()
+  {
+    return euler3(1, 0, 0);
+  }
+
+  static euler3 up()
+  {
+    return euler3(0, 1, 0);
+  }
+
+  static euler3 forward()
+  {
+    return euler3(0, 0, -1);
+  }
+
+  euler3(float x, float y, float z)
+    : vector3(x, y, z)
+  {
+  }
+
+  euler3 operator*(float scalar) const
+  {
+    return euler3(x * scalar, y * scalar, z * scalar);
+  }
+};
+
+struct color3
+{
+  float r;
+  float g;
+  float b;
+
+  static color3 black()
+  {
+    return color3(0, 0, 0);
+  }
+
+  static color3 white()
+  {
+    return color3(1, 1, 1);
+  }
+
+  static color3 gray()
+  {
+    return color3(0.5f, 0.5f, 0.5f);
+  }
+
+  static color3 red()
+  {
+    return color3(1, 0, 0);
+  }
+
+  static color3 green()
+  {
+    return color3(0, 1, 0);
+  }
+
+  static color3 blue()
+  {
+    return color3(0, 0, 1);
+  }
+
+  color3(float in_r, float in_g, float in_b)
+    : r(in_r),
+      g(in_g),
+      b(in_b)
+  {
+  }
+};
+
+namespace node
+{
+  struct transform
+  {
+    transform(vector3 position, vector3 scale, euler3 rotation)
+    {
+      glPushMatrix();
+      glTranslatef(position.x, position.y, position.z);
+      glRotatef(rotation.z, 0, 0, 1);
+      glRotatef(rotation.y, 0, 1, 0);
+      glRotatef(rotation.x, 1, 0, 0);
+      glScalef(scale.x, scale.y, scale.z);
+    }
+
+    ~transform()
+    {
+      glPopMatrix();
+    }
+  };
+
+  struct translate: public transform
+  {
+    translate(vector3 position)
+      : transform(position, vector3::one(), euler3::zero())
+    {
+    }
+  };
+
+  struct scale: public transform
+  {
+    scale(vector3 dimensions)
+      : transform(vector3::zero(), dimensions, euler3::zero())
+    {
+    }
+  };
+
+  struct rotate: public transform
+  {
+    rotate(euler3 rotation)
+      : transform(vector3::zero(), vector3::one(), rotation)
+    {
+    }
+  };
+
+  class box
+  {
+  public:
+    box(vector3 position, vector3 scale, euler3 rotation, color3 color)
+    {
+      draw(position, scale, rotation, color);
+    }
+
+    ~box()
+    {
+      glPopMatrix();
+    }
+
+  private:
+    void draw(vector3 position, vector3 scale, euler3 rotation, color3 color)
+    {
+      glPushMatrix();
+      glTranslatef(position.x, position.y, position.z);
+      glRotatef(rotation.z, 0, 0, 1);
+      glRotatef(rotation.y, 0, 1, 0);
+      glRotatef(rotation.x, 1, 0, 0);
+      glScalef(scale.x, scale.y, scale.z);
+      glBegin(GL_QUADS);
+      glColor3f(color.r, color.g, color.b);
+      glVertex3f(-0.5f, 0.5f, 0.5f); glVertex3f(0.5f, 0.5f, 0.5f); glVertex3f(0.5f, -0.5f, 0.5f); glVertex3f(-0.5f, -0.5f, 0.5f);     // front
+      glVertex3f(0.5f, 0.5f, -0.5f); glVertex3f(-0.5f, 0.5f, -0.5f); glVertex3f(-0.5f, -0.5f, -0.5f); glVertex3f(0.5f, -0.5f, -0.5f); // back
+      glVertex3f(-0.5f, 0.5f, -0.5f); glVertex3f(0.5f, 0.5f, -0.5f); glVertex3f(0.5f, 0.5f, 0.5f); glVertex3f(-0.5f, 0.5f, 0.5f);     // top
+      glVertex3f(-0.5f, -0.5f, 0.5f); glVertex3f(0.5f, -0.5f, 0.5f); glVertex3f(0.5f, -0.5f, -0.5f); glVertex3f(-0.5f, -0.5f, -0.5f); // bottom
+      glVertex3f(-0.5f, 0.5f, -0.5f); glVertex3f(-0.5f, 0.5f, 0.5f); glVertex3f(-0.5f, -0.5f, 0.5f); glVertex3f(-0.5f, -0.5f, -0.5f); // left
+      glVertex3f(0.5f, 0.5f, 0.5f); glVertex3f(0.5f, 0.5f, -0.5f); glVertex3f(0.5f, -0.5f, -0.5f); glVertex3f(0.5f, -0.5f, 0.5f);     // right
+      glEnd();
+    }
+  };
+}
+
 class perspective_window: public window_3d
 {
 public:
@@ -85,7 +256,34 @@ public:
     clear();
     perspective(60);
     camera(vector3(0, -1.5, 0), vector3(30, 0, 0));
-    box(vector3(0, 0, -m_distance), vector3(0, m_ya, 0), 1);
+    {
+
+
+
+      {
+        node::transform transform(vector3::forward() * m_distance, vector3::one(), euler3::up() * m_ya);
+
+        // Render target
+        {
+
+          color3 ir_color = color3(0.7f, 0, 0.9f);    // purple
+          color3 power_color = color3(0.9f, 0.8f, 0); // amber
+
+          // Breadboard
+          { node::box box(vector3::zero(), vector3(1, 0.5f, 0.01f), euler3::zero(), color3(0, 0.5f, 0)); }
+
+          // IR LEDs
+          { node::box box(vector3(-0.45f, 0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), ir_color); }
+          { node::box box(vector3(0.45f, 0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), ir_color); }
+          { node::box box(vector3(-0.45f, -0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), ir_color); }
+          { node::box box(vector3(0.45f, -0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), ir_color); }
+
+          // Power LED
+          { node::box box(vector3(0, 0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), power_color); }
+        }
+      }
+    }
+    //box(vector3(0, 0, -m_distance), vector3(0, m_ya, 0), 1);
     m_distance += .01f;
     m_ya += 1;
   }
@@ -121,26 +319,6 @@ private:
     glRotatef(-euler.y, 0, 1, 0);
     glRotatef(-euler.x, 1, 0, 0);
     glTranslatef(-position.x, -position.y, -position.z);
-  }
-
-  void box(vector3 position, vector3 euler, float size)
-  {
-    glPushMatrix();
-    glTranslatef(position.x, position.y, position.z);
-    glScalef(0.5f * size, 0.5f * size, 0.5f * size);
-    glRotatef(euler.z, 0, 0, 1);
-    glRotatef(euler.y, 0, 1, 0);
-    glRotatef(euler.x, 1, 0, 0);
-    glBegin(GL_QUADS);
-    glColor3f(1, 0, 0);
-    glVertex3f(-1, 1, 1); glVertex3f(1, 1, 1); glVertex3f(1, -1, 1); glVertex3f(-1, -1, 1);     // front
-    glVertex3f(1, 1, -1); glVertex3f(-1, 1, -1); glVertex3f(-1, -1, -1); glVertex3f(1, -1, -1); // back
-    glVertex3f(-1, 1, -1); glVertex3f(1, 1, -1); glVertex3f(1, 1, 1); glVertex3f(-1, 1, 1);     // top
-    glVertex3f(-1, -1, 1); glVertex3f(1, -1, 1); glVertex3f(1, -1, -1); glVertex3f(-1, -1, -1); // bottom
-    glVertex3f(-1, 1, -1); glVertex3f(-1, 1, 1); glVertex3f(-1, -1, 1); glVertex3f(-1, -1, -1); // left
-    glVertex3f(1, 1, 1); glVertex3f(1, 1, -1); glVertex3f(1, -1, -1); glVertex3f(1, -1, 1);     // right
-    glEnd();
-    glPopMatrix();
   }
 };
 

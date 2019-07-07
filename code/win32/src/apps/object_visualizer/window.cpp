@@ -73,7 +73,17 @@ window_3d::window_3d(const char *title, int width, int height)
   SDL_GL_SetSwapInterval(1);
 
   glClearColor(0, 0, 0, 1);
+  glClearDepth(1.0);
   glViewport(0, 0, width, height);
+  
+  glFrontFace(GL_CW);
+  glCullFace(GL_BACK);
+  glEnable(GL_CULL_FACE);
+  glDepthFunc(GL_LESS);
+  glEnable(GL_DEPTH_TEST);
+  glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_BLEND);
 }
 
 window_3d::~window_3d()
@@ -101,6 +111,7 @@ void window_3d::clear()
 {
   set_context();
   glClear(GL_COLOR_BUFFER_BIT);
+  glClear(GL_DEPTH_BUFFER_BIT);
 }
 
 void window_3d::draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8_t b)
@@ -111,10 +122,6 @@ void window_3d::draw_rectangle(const SDL_Rect &rect, uint8_t r, uint8_t g, uint8
   glOrtho(0, 1, 1, 0, -1, 1);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  glDisable(GL_TEXTURE_2D);
-  glDisable(GL_BLEND);
-  glDisable(GL_DEPTH_TEST);
-  glDisable(GL_LIGHTING);
   glBegin(GL_QUADS);
   glColor3f(r / 255.0f, g / 255.0f, b / 255.0f);
   float xres = m_width;

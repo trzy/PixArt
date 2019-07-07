@@ -15,19 +15,134 @@
 #include "apps/object_visualizer/print_sensor_settings.hpp"
 #include "apps/object_visualizer/print_objects.hpp"
 #include <SDL2/SDL.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
 #include <cstdio>
 #include <chrono>
 #include <memory>
 #include <map>
+#include <cmath>
 
 static constexpr const char *k_port = "Arduino/SerialPort/PortName";
 static constexpr const char *k_baud = "Arduino/SerialPort/BaudRate";
 static constexpr const char *k_record_to = "Arduino/SerialPort/Record";
 static constexpr const char *k_replay_from = "Arduino/SerialPort/Replay";
 static constexpr const char *k_print_settings = "SettingsPrintout/Enabled";
+static constexpr const char *k_print_objs = "ObjectASCIIPrintout/Enabled";
 static constexpr const char *k_view_objs = "ObjectViewWindow/Enabled";
 static constexpr const char *k_res2d = "ObjectViewWindow/Resolution";
-static constexpr const char *k_print_objs = "ObjectASCIIPrintout/Enabled";
+static constexpr const char *k_view_3d = "PerspectiveViewWindow/Enabled";
+static constexpr const char *k_res3d = "PerspectiveViewWindow/Resolution";
+
+struct vector3
+{
+  float x = 0;
+  float y = 0;
+  float z = 0;
+
+  static vector3 zero()
+  {
+    return vector3(0, 0, 0);
+  }
+
+  static vector3 one()
+  {
+    return vector3(1, 1, 1);
+  }
+
+  vector3(float in_x, float in_y, float in_z)
+    : x(in_x),
+      y(in_y),
+      z(in_z)
+  {
+  }
+
+  vector3()
+  {
+  }
+
+  vector3 operator+(const vector3 &rhs) const
+  {
+    return vector3(x + rhs.x, y + rhs.y, z + rhs.z);
+  }
+
+  vector3 operator*(float scalar) const
+  {
+    return vector3(x * scalar, y * scalar, z * scalar);
+  }
+};
+
+class perspective_window: public window_3d
+{
+public:
+  perspective_window(int width, int height)
+    : window_3d("Perspective View", width, height)
+  {
+  }
+
+  void update(const std::array<PA_object, 16> &objs) override
+  {
+    clear();
+    perspective(60);
+    camera(vector3(0, -1.5, 0), vector3(30, 0, 0));
+    box(vector3(0, 0, -m_distance), vector3(0, m_ya, 0), 1);
+    m_distance += .01f;
+    m_ya += 1;
+  }
+
+private:
+  float m_distance = 0;
+  float m_ya = 0;
+
+  static constexpr float pi()
+  {
+    return (float) std::atan(1) * 4;
+  }
+
+  static float deg2rad(float angle)
+  {
+    return angle * pi() / 180;
+  }
+
+  void perspective(float fov)
+  {
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    float aspect = float(width()) / float(height());
+    float fov_y = fov * aspect;
+    gluPerspective(fov_y, (GLfloat) aspect, 0.1f, 1e2f);
+  }
+
+  void camera(vector3 position, vector3 euler)
+  {
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glRotatef(-euler.z, 0, 0, 1);
+    glRotatef(-euler.y, 0, 1, 0);
+    glRotatef(-euler.x, 1, 0, 0);
+    glTranslatef(-position.x, -position.y, -position.z);
+  }
+
+  void box(vector3 position, vector3 euler, float size)
+  {
+    glPushMatrix();
+    glTranslatef(position.x, position.y, position.z);
+    glScalef(0.5f * size, 0.5f * size, 0.5f * size);
+    glRotatef(euler.z, 0, 0, 1);
+    glRotatef(euler.y, 0, 1, 0);
+    glRotatef(euler.x, 1, 0, 0);
+    glBegin(GL_QUADS);
+    glColor3f(1, 0, 0);
+    glVertex3f(-1, 1, 1); glVertex3f(1, 1, 1); glVertex3f(1, -1, 1); glVertex3f(-1, -1, 1);     // front
+    glVertex3f(1, 1, -1); glVertex3f(-1, 1, -1); glVertex3f(-1, -1, -1); glVertex3f(1, -1, -1); // back
+    glVertex3f(-1, 1, -1); glVertex3f(1, 1, -1); glVertex3f(1, 1, 1); glVertex3f(-1, 1, 1);     // top
+    glVertex3f(-1, -1, 1); glVertex3f(1, -1, 1); glVertex3f(1, -1, -1); glVertex3f(-1, -1, -1); // bottom
+    glVertex3f(-1, 1, -1); glVertex3f(-1, 1, 1); glVertex3f(-1, -1, 1); glVertex3f(-1, -1, -1); // left
+    glVertex3f(1, 1, 1); glVertex3f(1, 1, -1); glVertex3f(1, -1, -1); glVertex3f(1, -1, 1);     // right
+    glEnd();
+    glPopMatrix();
+  }
+};
 
 class object_window: public window_3d
 {
@@ -112,7 +227,7 @@ static void render_frames(i_serial_device *port, const std::vector<std::shared_p
         {
           window->update(objs);
         }
-        
+
         for (auto &window: windows)
         {
           window->blit();
@@ -145,10 +260,10 @@ static std::shared_ptr<i_serial_device> create_serial_connection(const util::con
 {
   const std::string port_name = config[k_port].Value<std::string>();
   const unsigned baud = config[k_baud].ValueAs<unsigned>();
-  
+
   bool record = config[k_record_to].Exists();
   bool replay = config[k_replay_from].Exists();
-  
+
   if (record && replay)
   {
     throw std::logic_error("Record and replay options are mutually exclusive");
@@ -168,7 +283,7 @@ static std::shared_ptr<i_serial_device> create_serial_connection(const util::con
     LOG_INFO("Recording " << port_name << " to '" << file << "'...\n");
     return recorder;
   }
-  
+
   return std::make_shared<serial_port>(port_name, baud);
 }
 
@@ -186,9 +301,11 @@ int main(int argc, char **argv)
       valued_option("--record-to", string("file"), k_record_to, "Capture a recording of the serial port data."),
       valued_option("--replay-from", string("file"), k_replay_from, "Replay captured serial port data."),
       default_valued_option("--settings", util::command_line::boolean(), "true", k_print_settings, "Print PixArt sensor settings."),
+      switch_option({ "--print-objects" }, k_print_objs, "Print objects for single frame."),
       default_valued_option("--view-objects", util::command_line::boolean(), "true", k_view_objs, "Schematic view of detected objects in sensor frame."),
       default_multivalued_option("--res-2d", { integer("width"), integer("height") }, "392,392", k_res2d, "Resolution of 2D object view window."),
-      switch_option({ "--print-objects" }, k_print_objs, "Print objects for single frame.")
+      default_valued_option("--view-3d", util::command_line::boolean(), "true", k_view_3d, "Perspective view of detected objects."),
+      default_multivalued_option("--res-3d", { integer("width"), integer("height") }, "640,640", k_res3d, "Resolution of perspective view window.")
     };
     auto state = parse_command_line(&config, options, argc, argv);
     if (state.exit)
@@ -208,10 +325,16 @@ int main(int argc, char **argv)
     }
 
     std::vector<std::shared_ptr<i_window>> windows;
-    
+
     if (config[k_view_objs].ValueAs<bool>())
     {
       auto window = std::make_shared<object_window>(config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
+      windows.push_back(window);
+    }
+
+    if (config[k_view_3d].ValueAs<bool>())
+    {
+      auto window = std::make_shared<perspective_window>(config[k_res3d]["width"].ValueAs<int>(), config[k_res3d]["height"].ValueAs<int>());
       windows.push_back(window);
     }
 

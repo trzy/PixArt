@@ -24,6 +24,11 @@ window_2d::~window_2d()
   SDL_DestroyWindow(m_window);
 }
 
+SDL_Window *window_2d::window() const
+{
+  return m_window;
+}
+
 int window_2d::width() const
 {
   return m_width;
@@ -75,7 +80,7 @@ window_3d::window_3d(const char *title, int width, int height)
   glClearColor(0, 0, 0, 1);
   glClearDepth(1.0);
   glViewport(0, 0, width, height);
-  
+
   glFrontFace(GL_CW);
   glCullFace(GL_BACK);
   glEnable(GL_CULL_FACE);
@@ -90,6 +95,11 @@ window_3d::~window_3d()
 {
   SDL_GL_DeleteContext(m_ctx);
   SDL_DestroyWindow(m_window);
+}
+
+SDL_Window *window_3d::window() const
+{
+  return m_window;
 }
 
 int window_3d::width() const

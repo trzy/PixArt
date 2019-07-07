@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <chrono>
 #include <memory>
-#include <map>
+#include <set>
 #include <cmath>
 
 static constexpr const char *k_port = "Arduino/SerialPort/PortName";
@@ -137,7 +137,23 @@ public:
   }
 };
 
-static void render_frames(i_serial_device *port, const std::vector<std::shared_ptr<i_window>> &windows)
+static void remove_window(std::set<std::shared_ptr<i_window>> *windows, SDL_Window *sdl_window)
+{
+  for (auto it = windows->begin(); it != windows->end(); )
+  {
+    auto window = *it;
+    if (window->window() == sdl_window)
+    {
+      it = windows->erase(it);
+    }
+    else
+    {
+      ++it;
+    }
+  }
+}
+
+static void render_frames(i_serial_device *port, std::set<std::shared_ptr<i_window>> *windows)
 {
   object_report_request_packet request;
 
@@ -163,12 +179,12 @@ static void render_frames(i_serial_device *port, const std::vector<std::shared_p
         }
 
         // Update views
-        for (auto &window: windows)
+        for (auto &window: *windows)
         {
           window->update(objs);
         }
 
-        for (auto &window: windows)
+        for (auto &window: *windows)
         {
           window->blit();
         }
@@ -191,6 +207,13 @@ static void render_frames(i_serial_device *port, const std::vector<std::shared_p
       if (e.type == SDL_QUIT)
       {
         quit = true;
+      }
+      else if (e.type == SDL_WINDOWEVENT)
+      {
+        if (e.window.event == SDL_WINDOWEVENT_CLOSE)
+        {
+          remove_window(windows, SDL_GetWindowFromID(e.window.windowID));
+        }
       }
     }
   }
@@ -264,18 +287,18 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    std::vector<std::shared_ptr<i_window>> windows;
+    std::set<std::shared_ptr<i_window>> windows;
 
     if (config[k_view_objs].ValueAs<bool>())
     {
       auto window = std::make_shared<object_window>(config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
-      windows.push_back(window);
+      windows.insert(window);
     }
 
     if (config[k_view_3d].ValueAs<bool>())
     {
       auto window = std::make_shared<perspective_window>(config[k_res3d]["width"].ValueAs<int>(), config[k_res3d]["height"].ValueAs<int>());
-      windows.push_back(window);
+      windows.insert(window);
     }
 
     std::shared_ptr<i_serial_device> arduino_port = create_serial_connection(config);
@@ -292,7 +315,7 @@ int main(int argc, char **argv)
 
     if (windows.size() > 0)
     {
-      render_frames(arduino_port.get(), windows);
+      render_frames(arduino_port.get(), &windows);
     }
   }
   catch (std::exception& e)

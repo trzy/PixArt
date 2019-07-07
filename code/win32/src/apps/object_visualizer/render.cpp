@@ -5,7 +5,7 @@
 namespace render
 {
 
-  void set_camera(float fov_x, float aspect, vector3 position, vector3 euler)
+  void set_camera(float fov_x, float aspect, vector3 position, euler3 rotation)
   {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -14,9 +14,9 @@ namespace render
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glRotatef(-euler.z, 0, 0, 1);
-    glRotatef(-euler.y, 0, 1, 0);
-    glRotatef(-euler.x, 1, 0, 0);
+    glRotatef(-rotation.z, 0, 0, 1);
+    glRotatef(-rotation.y, 0, 1, 0);
+    glRotatef(-rotation.x, 1, 0, 0);
     glTranslatef(-position.x, -position.y, -position.z);
   }
 

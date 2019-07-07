@@ -134,7 +134,7 @@ namespace render
     }
   };
 
-  void set_camera(float fov_x, float aspect, vector3 position, vector3 euler);
+  void set_camera(float fov_x, float aspect, vector3 position, euler3 rotation);
 
   namespace node
   {

@@ -49,7 +49,7 @@ public:
       using namespace render;
       float horizontal_fov = 60;
       float aspect = float(width()) / float(height());
-      set_camera(60, aspect, vector3(0, -1.5, 0), vector3(30, 0, 0));
+      set_camera(60, aspect, vector3(0, -1.5, 0), euler3(30, 0, 0));
 
       {
         node::transform transform(vector3::forward() * m_distance, vector3::one(), euler3::up() * m_ya);

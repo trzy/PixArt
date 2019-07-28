@@ -64,6 +64,7 @@ PROGRAMS =
 # Program definitions
 #
 include build/pa_driver_test.inc
+include build/pnp_test.inc
 include build/object_visualizer.inc
 
 #

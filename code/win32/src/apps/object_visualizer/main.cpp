@@ -54,23 +54,38 @@ private:
   {
     using namespace render;
 
-    node::transform transform(position, vector3::one(), rotation);
-
+    float board_width = 8e-2f;
+    float board_height = 3e-2f;
     color3 board_color = color3(0, 0.5f, 0);
     color3 ir_color = color3(0.7f, 0, 0.9f);    // purple
     color3 power_color = color3(0.9f, 0.8f, 0); // amber
 
+    // Position and orientation
+    node::transform transform(position, vector3::one(), rotation);
+
     // Breadboard
-    { node::box box(vector3::zero(), vector3(1, 0.5f, 0.01f), euler3::zero(), board_color); }
+    node::box board(vector3::zero(), vector3(board_width, board_height, 0.002f), euler3::zero(), board_color);
 
-    // IR LEDs
-    { node::box box(vector3(-0.45f, 0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), ir_color); }
-    { node::box box(vector3(0.45f, 0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), ir_color); }
-    { node::box box(vector3(-0.45f, -0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), ir_color); }
-    { node::box box(vector3(0.45f, -0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), ir_color); }
+    // Board components
+    {
+      float led_x = 0.4f; // % of board dimensions
+      float led_y = 0.4f;
+      float led_width = 0.05f;
+      float led_height = led_width * (board_width / board_height);
+      float led_depth = 2.0f;
 
-    // Power LED
-    { node::box box(vector3(0, 0.20f, 0.05f), vector3(0.05f, 0.05f, 0.1f), euler3::zero(), power_color); }
+      // Move pivot point to surface of board
+      node::translate surface(vector3(0, 0, 0.5f));
+
+      // IR LEDs
+      { node::box led(vector3(-led_x, led_y, 0.5f * led_depth), vector3(led_width, led_height, led_depth), euler3::zero(), ir_color); }
+      { node::box led(vector3(led_x, led_y, 0.5f * led_depth), vector3(led_width, led_height, led_depth), euler3::zero(), ir_color); }
+      { node::box led(vector3(led_x, -led_y, 0.5f * led_depth), vector3(led_width, led_height, led_depth), euler3::zero(), ir_color); }
+      { node::box led(vector3(-led_x, -led_y, 0.5f * led_depth), vector3(led_width, led_height, led_depth), euler3::zero(), ir_color); }
+
+      // Power LEDs
+      { node::box led(vector3(0, led_y, 0.5f * led_depth), vector3(led_width, led_height, led_depth), euler3::zero(), power_color); }
+    }
   }
 
   void draw_scene()
@@ -81,11 +96,11 @@ private:
       using namespace render;
       float horizontal_fov = 60;
       float aspect = float(width()) / float(height());
-      set_camera(60, aspect, vector3(0, -1.5, 0), euler3(30, 0, 0));
+      set_camera(60, aspect, vector3(0, -0.1f, 0), euler3(30, 0, 0));
       draw_led_board(vector3::forward() * m_distance, euler3::up() * m_ya);
     }
 
-    m_distance += .01f;
+    m_distance += .05f * (1 / 60.0f) ;
     m_ya += 1;
   }
 };

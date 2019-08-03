@@ -1,5 +1,6 @@
 #include "pa_driver/packets.hpp"
 #include "arduino/packet_reader.hpp"
+#include "pixart/settings.hpp"
 #include "serial/i_serial_device.hpp"
 #include <cstdio>
 #include <map>
@@ -11,7 +12,7 @@ static double compute_frame_period_seconds(uint32_t frame_period_reg)
   return period;
 }
 
-void print_sensor_settings(i_serial_device *port)
+pixart::settings read_sensor_settings(i_serial_device *port, bool print_settings)
 {
   struct
   {
@@ -88,20 +89,26 @@ void print_sensor_settings(i_serial_device *port)
   double frame_rate = 1.0f / frame_period;
 
   // Print
-  printf("PAJ7025R2 Settings\n");
-  printf("------------------\n");
-  printf("Product ID                    = 0x%04x %s\n", product_id, product_id == 0x7025 ? "" : "(unknown device)");
-  printf("DSP area max threshold        = 0x%04x\n", max_area_threshold);
-  printf("DSP noise threshold           = 0x%02x\n", noise_threshold);
-  printf("DSP orientation ratio         = 0x%02x\n", orientation_ratio);
-  printf("DSP orientation factor        = 0x%02x\n", orientation_factor);
-  printf("DSP maximum number of objects = %d\n", max_object_number);
-  printf("Sensor gain 1                 = 0x%02x\n", sensor_gain_1);
-  printf("Sensor gain 2                 = 0x%02x\n", sensor_gain_2);
-  printf("Sensor exposure length        = 0x%04x\n", sensor_exposure_length);
-  printf("Scale resolution X            = %d\n", interpolated_resolution_x);
-  printf("Scale resolution Y            = %d\n", interpolated_resolution_y);
-  printf("Frame period                  = %1.4f ms\n", frame_period * 1000);
-  printf("Frame rate                    = %1.2f Hz\n", frame_rate);
-  printf("\n");
+  if (print_settings)
+  {
+    printf("PAJ7025R2 Settings\n");
+    printf("------------------\n");
+    printf("Product ID                    = 0x%04x %s\n", product_id, product_id == 0x7025 ? "" : "(unknown device)");
+    printf("DSP area max threshold        = 0x%04x\n", max_area_threshold);
+    printf("DSP noise threshold           = 0x%02x\n", noise_threshold);
+    printf("DSP orientation ratio         = 0x%02x\n", orientation_ratio);
+    printf("DSP orientation factor        = 0x%02x\n", orientation_factor);
+    printf("DSP maximum number of objects = %d\n", max_object_number);
+    printf("Sensor gain 1                 = 0x%02x\n", sensor_gain_1);
+    printf("Sensor gain 2                 = 0x%02x\n", sensor_gain_2);
+    printf("Sensor exposure length        = 0x%04x\n", sensor_exposure_length);
+    printf("Scale resolution X            = %d\n", interpolated_resolution_x);
+    printf("Scale resolution Y            = %d\n", interpolated_resolution_y);
+    printf("Frame period                  = %1.4f ms\n", frame_period * 1000);
+    printf("Frame rate                    = %1.2f Hz\n", frame_rate);
+    printf("\n");
+  }
+  
+  // Return settings object
+  return pixart::settings{ resolution_x: interpolated_resolution_x, resolution_y: interpolated_resolution_y };
 }

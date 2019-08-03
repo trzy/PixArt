@@ -13,7 +13,7 @@
 #include "pa_driver/pixart_object.hpp"
 #include "apps/object_visualizer/window.hpp"
 #include "apps/object_visualizer/render.hpp"
-#include "apps/object_visualizer/print_sensor_settings.hpp"
+#include "apps/object_visualizer/sensor_settings.hpp"
 #include "apps/object_visualizer/print_objects.hpp"
 #include <SDL2/SDL.h>
 #include <cstdio>
@@ -43,7 +43,8 @@ public:
 
   void update(const std::array<PA_object, 16> &objs) override
   {
-    draw_scene();
+    draw_test_scene();
+    std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
   }
 
 private:
@@ -88,7 +89,7 @@ private:
     }
   }
 
-  void draw_scene()
+  void draw_test_scene()
   {
     clear();
 
@@ -324,11 +325,8 @@ int main(int argc, char **argv)
 
     std::shared_ptr<i_serial_device> arduino_port = create_serial_connection(config);
 
-    if (config[k_print_settings].ValueAs<bool>())
-    {
-      print_sensor_settings(arduino_port.get());
-    }
-
+    pixart::settings settings = read_sensor_settings(arduino_port.get(), config[k_print_settings].ValueAs<bool>());
+    
     if (config[k_print_objs].ValueAs<bool>())
     {
       print_objects(arduino_port.get());

@@ -9,7 +9,7 @@ SRC_FILES_object_visualizer = \
 	src/util/command_line.cpp \
 	src/serial/serial_replay_device.cpp \
 	src/apps/object_visualizer/print_objects.cpp \
-	src/apps/object_visualizer/print_sensor_settings.cpp \
+	src/apps/object_visualizer/sensor_settings.cpp \
 	src/apps/object_visualizer/window.cpp \
 	src/apps/object_visualizer/render.cpp \
 	../arduino/pa_driver/pixart_object.cpp \

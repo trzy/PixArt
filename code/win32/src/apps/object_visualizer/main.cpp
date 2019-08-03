@@ -44,7 +44,7 @@ public:
   void update(const std::array<PA_object, 16> &objs) override
   {
     draw_test_scene();
-    std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
+    //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
   }
 
 private:
@@ -175,7 +175,7 @@ static void remove_window(std::set<std::shared_ptr<i_window>> *windows, SDL_Wind
   }
 }
 
-static void render_frames(i_serial_device *port, std::set<std::shared_ptr<i_window>> *windows)
+static void render_frames(i_serial_device *port, const pixart::settings &settings, std::set<std::shared_ptr<i_window>> *windows)
 {
   object_report_request_packet request;
 
@@ -217,6 +217,13 @@ static void render_frames(i_serial_device *port, std::set<std::shared_ptr<i_wind
     }
   );
 
+  // Initialize windows
+  for (auto &window: *windows)
+  {
+    window->init(settings);
+  }
+
+  // Start rendering frames
   port->write(request);
   bool quit = false;
   SDL_Event e;
@@ -334,7 +341,7 @@ int main(int argc, char **argv)
 
     if (windows.size() > 0)
     {
-      render_frames(arduino_port.get(), &windows);
+      render_frames(arduino_port.get(), settings, &windows);
     }
   }
   catch (std::exception& e)

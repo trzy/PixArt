@@ -2,6 +2,7 @@
 #define INCLUDED_WINDOW_HPP
 
 #include "pa_driver/pixart_object.hpp"
+#include "pixart/settings.hpp"
 #include <SDL2/SDL.h>
 #include <cstdint>
 #include <array>
@@ -13,11 +14,12 @@ public:
   {
   }
 
+  virtual void init(const pixart::settings &settings) = 0;
+  virtual void update(const std::array<PA_object, 16> &objs) = 0;
+  virtual void blit() = 0;
   virtual SDL_Window *window() const = 0;
   virtual int width() const = 0;
   virtual int height() const = 0;
-  virtual void update(const std::array<PA_object, 16> &objs) = 0;
-  virtual void blit() = 0;
 
 protected:
   virtual void clear() = 0;
@@ -30,15 +32,19 @@ public:
   window_2d(const char *title, int width, int height);
   ~window_2d() override;
 
-  SDL_Window *window() const override;
-  int width() const override;
-  int height() const override;
+  virtual void init(const pixart::settings &settings) override
+  {
+  }
 
   virtual void update(const std::array<PA_object, 16> &objs) override
   {
   }
 
   void blit() override;
+
+  SDL_Window *window() const override;
+  int width() const override;
+  int height() const override;
 
 protected:
   void clear() override;
@@ -56,15 +62,19 @@ public:
   window_3d(const char *title, int width, int height);
   ~window_3d() override;
 
-  SDL_Window *window() const override;
-  int width() const override;
-  int height() const override;
+  virtual void init(const pixart::settings &settings) override
+  {
+  }
 
   virtual void update(const std::array<PA_object, 16> &objs) override
   {
   }
 
   void blit() override;
+
+  SDL_Window *window() const override;
+  int width() const override;
+  int height() const override;
 
 protected:
   void set_context();

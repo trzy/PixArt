@@ -139,8 +139,8 @@ static void test_pnp()
 
   // Solve for model-view transform from image points and print results
   auto image_points = generate_image_points(object_points, intrinsic_mat, modelview);
-  cv::Mat rotation_mat(3, 3, CV_32F, cv::Scalar::all(0));
-  cv::Mat position_mat(3, 3, CV_32F, cv::Scalar::all(0));
+  cv::Mat rotation_mat(3, 1, CV_32F, cv::Scalar::all(0));
+  cv::Mat position_mat(3, 1, CV_32F, cv::Scalar::all(0));
   bool result = cv::solvePnP(object_points, image_points, intrinsic_mat, cv::Mat(), rotation_mat, position_mat, false, cv::SOLVEPNP_EPNP);
   if (!result)
   {

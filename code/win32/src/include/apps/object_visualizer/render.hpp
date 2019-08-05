@@ -1,6 +1,11 @@
 #ifndef INCLUDED_RENDER_HPP
 #define INCLUDED_RENDER_HPP
 
+namespace cv
+{
+  class Mat;
+}
+
 namespace render
 {
 
@@ -142,6 +147,7 @@ namespace render
     struct transform
     {
       transform(vector3 position, vector3 scale, euler3 rotation);
+      transform(const cv::Mat &rotation3x3, const cv::Mat &translation3x1);
       ~transform();
     };
 

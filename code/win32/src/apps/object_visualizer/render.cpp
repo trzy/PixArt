@@ -1,4 +1,5 @@
 #include "apps/object_visualizer/render.hpp"
+#include <opencv2/opencv.hpp>
 #include <GL/gl.h>
 #include <GL/glu.h>
 
@@ -10,7 +11,7 @@ namespace render
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     float fov_y = fov_x * aspect;
-    gluPerspective(fov_y, (GLfloat) aspect, 0.1f, 1e2f);
+    gluPerspective(fov_y, (GLfloat) aspect, 0.01f, 1e2f);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -31,6 +32,41 @@ namespace render
       glRotatef(rotation.y, 0, 1, 0);
       glRotatef(rotation.x, 1, 0, 0);
       glScalef(scale.x, scale.y, scale.z);
+    }
+
+    transform::transform(const cv::Mat &rotation3x3, const cv::Mat &translation3x1)
+    {
+      assert(rotation3x3.type() == translation3x1.type());
+      assert(rotation3x3.type() == CV_32F || rotation3x3.type() == CV_64F);
+
+      glPushMatrix();
+
+      if (rotation3x3.type() == CV_32F)
+      {
+        float matrix[] =
+        {
+          // Note that OpenGL matrix is stored in column-major format (transposed
+          // relative to OpenCV matrix layout)
+          rotation3x3.at<float>(0,0),    rotation3x3.at<float>(1,0),    rotation3x3.at<float>(2,0),    0,
+          rotation3x3.at<float>(0,1),    rotation3x3.at<float>(1,1),    rotation3x3.at<float>(2,1),    0,
+          rotation3x3.at<float>(0,2),    rotation3x3.at<float>(1,2),    rotation3x3.at<float>(2,2),    0,
+          translation3x1.at<float>(0,0), translation3x1.at<float>(1,0), translation3x1.at<float>(2,0), 1
+        };
+        glMultMatrixf(matrix);
+      }
+      else
+      {
+        double matrix[] =
+        {
+          // Note that OpenGL matrix is stored in column-major format (transposed
+          // relative to OpenCV matrix layout)
+          rotation3x3.at<double>(0,0),    rotation3x3.at<double>(1,0),    rotation3x3.at<double>(2,0),    0,
+          rotation3x3.at<double>(0,1),    rotation3x3.at<double>(1,1),    rotation3x3.at<double>(2,1),    0,
+          rotation3x3.at<double>(0,2),    rotation3x3.at<double>(1,2),    rotation3x3.at<double>(2,2),    0,
+          translation3x1.at<double>(0,0), translation3x1.at<double>(1,0), translation3x1.at<double>(2,0), 1
+        };
+        glMultMatrixd(matrix);
+      }
     }
 
     transform::~transform()

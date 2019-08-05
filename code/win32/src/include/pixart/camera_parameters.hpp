@@ -14,19 +14,21 @@ namespace pixart
     static const constexpr double fno = 1.838227e-3;                    // meters
     static const constexpr double image_circle = 1.658e-3;              // meters
     static const constexpr double back_focal_length = 0.975e-3;         // meters
-    static const constexpr double image_area = 1.524e-6;                // meters^2
+    static const constexpr double image_area = 1.524e-3;                // meters (seems to refer to diagonal length of sensor)
     static const constexpr double pixels_x = 98;                        // pixels
     static const constexpr double pixels_y = 98;                        // pixels
+    static const constexpr double pixel_width = 11e-6;                  // meters
+    static const constexpr double pixel_height = 11e-6;                 // meters
 
     static double focal_length_x_pixels(double image_pixels_x = pixels_x)
     {
-      double image_width = std::sqrt(image_area);
+      double image_width = pixel_width * pixels_x;
       return effective_focal_length * image_pixels_x / image_width;
     }
 
     static double focal_length_y_pixels(double image_pixels_y = pixels_y)
     {
-      double image_height = std::sqrt(image_area);
+      double image_height = pixel_height * pixels_y;
       return effective_focal_length * image_pixels_y / image_height;
     }
 

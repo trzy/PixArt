@@ -11,10 +11,12 @@
 #include "arduino/packet_reader.hpp"
 #include "pa_driver/packets.hpp"
 #include "pa_driver/pixart_object.hpp"
+#include "pixart/camera_parameters.hpp"
 #include "apps/object_visualizer/window.hpp"
 #include "apps/object_visualizer/render.hpp"
 #include "apps/object_visualizer/sensor_settings.hpp"
 #include "apps/object_visualizer/print_objects.hpp"
+#include <opencv2/opencv.hpp>
 #include <SDL2/SDL.h>
 #include <cstdio>
 #include <chrono>
@@ -41,15 +43,86 @@ public:
   {
   }
 
+  void init(const pixart::settings &settings) override
+  {
+    float fx = pixart::camera_parameters::focal_length_x_pixels(settings.resolution_x);
+    float fy = pixart::camera_parameters::focal_length_y_pixels(settings.resolution_y);
+    float cx = 0.5f * settings.resolution_x;
+    float cy = 0.5f * settings.resolution_y;
+    m_camera_intrinsic = (cv::Mat_<float>(3, 3) <<
+      fx, 0,  cx,
+      0,  fy, cy,
+      0,  0,  1);
+    std::cout << "fx="<<fx<<std::endl;
+  }
+
   void update(const std::array<PA_object, 16> &objs) override
   {
-    draw_test_scene();
+    perspective_update(objs);
+    //draw_test_scene();
     //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
   }
 
 private:
+  cv::Mat m_camera_intrinsic;
   float m_distance = 0;
   float m_ya = 0;
+
+  void perspective_update(const std::array<PA_object, 16> &objs)
+  {
+    // Define object in world units, object-local space
+    float object_width = 8e-2f;
+    float object_height = 3e-2f;
+    std::vector<cv::Point3f> object_points =
+    {
+      { -0.5f * object_width, 0.5f * object_height, 0 },      // top middle (facing camera)
+      { 0.5f * object_width, 0.5f * object_height, 0 },   // top right corner
+      { 0.5f * object_width, -0.5f * object_height, 0 },  // bottom right corner
+      { -0.5f * object_width, -0.5f * object_height, 0 }  // bottom left corner
+    };
+
+    // Image points from sensor
+    std::vector<cv::Point2f> image_points =
+    {
+      { float(objs[0].cx), float(objs[0].cy) },
+      { float(objs[1].cx), float(objs[1].cy) },
+      { float(objs[2].cx), float(objs[2].cy) },
+      { float(objs[3].cx), float(objs[3].cy) }
+    };
+    //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
+
+    // Solve for model-view transform from image points
+    cv::Mat rodrigues;
+    cv::Mat translation;
+    bool result = cv::solvePnPRansac(object_points, image_points, m_camera_intrinsic, cv::Mat(), rodrigues, translation, false); //, cv::SOLVEPNP_ITERATIVE);
+
+    // Render
+    if (result)
+    {
+      //auto pos = cv::Point3f(translation);
+      //std::cout<<pos << std::endl;
+
+      // Convert Rodrigues vector to 3x3 matrix
+      cv::Mat rotation;
+      cv::Rodrigues(rodrigues, rotation);
+
+      using namespace render;
+
+      // Set up camera
+      clear();
+      float horizontal_fov = 45;
+      float aspect = float(width()) / float(height());
+      set_camera(45, aspect, vector3(0, 0, 0), euler3::zero());
+
+      // Apply modelview transform. Flip Z to convert OpenCV camera -> OpenGL
+      // coordinates. Flip Y so that +y is down, as in sensor frame.
+      node::scale scale(vector3(1,-1,-1));
+      node::transform transform(rotation, translation);
+
+      // Draw board
+      draw_led_board(vector3::zero(), euler3::zero());
+    }
+  }
 
   void draw_led_board(render::vector3 position, render::euler3 rotation)
   {
@@ -233,16 +306,19 @@ static void render_frames(i_serial_device *port, const pixart::settings &setting
 
     while (SDL_PollEvent(&e) != 0)
     {
-      if (e.type == SDL_QUIT)
+      switch (e.type)
       {
+      case SDL_QUIT:
         quit = true;
-      }
-      else if (e.type == SDL_WINDOWEVENT)
-      {
+        break;
+      case SDL_WINDOWEVENT:
         if (e.window.event == SDL_WINDOWEVENT_CLOSE)
         {
           remove_window(windows, SDL_GetWindowFromID(e.window.windowID));
         }
+        break;
+      case SDL_MOUSEWHEEL:
+        break;
       }
     }
   }
@@ -333,7 +409,7 @@ int main(int argc, char **argv)
     std::shared_ptr<i_serial_device> arduino_port = create_serial_connection(config);
 
     pixart::settings settings = read_sensor_settings(arduino_port.get(), config[k_print_settings].ValueAs<bool>());
-    
+
     if (config[k_print_objs].ValueAs<bool>())
     {
       print_objects(arduino_port.get());

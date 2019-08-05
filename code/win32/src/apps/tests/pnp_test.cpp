@@ -112,7 +112,7 @@ static void test_pnp()
   float object_height = 3e-2f;
   std::vector<cv::Point3f> object_points =
   {
-    { 0 * object_width, 0.5f * object_height, 0 },  // top middle (facing camera)
+    { -0.5f * object_width, 0.5f * object_height, 0 },  // top middle (facing camera)
     { 0.5f * object_width, 0.5f * object_height, 0 },   // top right corner
     { 0.5f * object_width, -0.5f * object_height, 0 },  // bottom right corner
     { -0.5f * object_width, -0.5f * object_height, 0 }  // bottom left corner
@@ -120,8 +120,10 @@ static void test_pnp()
   
   // Model-view matrix (4x4): local rotation and translation from camera (which
   // is positioned at origin)
-  auto euler = cv::Point3f{20, 0, 40};
-  auto position = cv::Point3f{0, 0.1, 30e-2};
+  //auto euler = cv::Point3f{20, 0, 40};
+  //auto position = cv::Point3f{0, 0.1, 30e-2};
+  auto euler = cv::Point3f{0,0,0};
+  auto position = cv::Point3f{0, 0, 13e-2}; // at this distance, object should span full sensor frame horizontally
   cv::Mat modelview = transform_matrix(euler, position);
 
   // Print model-view transform information. Rotation is converted to Rodrigues
@@ -139,8 +141,8 @@ static void test_pnp()
 
   // Solve for model-view transform from image points and print results
   auto image_points = generate_image_points(object_points, intrinsic_mat, modelview);
-  cv::Mat rotation_mat(3, 1, CV_32F, cv::Scalar::all(0));
-  cv::Mat position_mat(3, 1, CV_32F, cv::Scalar::all(0));
+  cv::Mat rotation_mat; // will be 3x1, single precision
+  cv::Mat position_mat; // ""
   bool result = cv::solvePnP(object_points, image_points, intrinsic_mat, cv::Mat(), rotation_mat, position_mat, false, cv::SOLVEPNP_EPNP);
   if (!result)
   {

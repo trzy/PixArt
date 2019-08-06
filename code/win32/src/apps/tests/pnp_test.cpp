@@ -4,6 +4,8 @@
  * Example of OpenCV's solvePnP() function. Takes 3D points, projects them to
  * image coordinates, and then recovers the model-view transform using
  * solvePnP().
+ *
+ * Order of points matters: object points and image points must correspond.
  */
 
 #include "util/math.hpp"
@@ -112,7 +114,7 @@ static void test_pnp()
   float object_height = 3e-2f;
   std::vector<cv::Point3f> object_points =
   {
-    { -0.5f * object_width, 0.5f * object_height, 0 },  // top middle (facing camera)
+    { -0.5f * object_width, 0.5f * object_height, 0 },  // top left corner (facing camera)
     { 0.5f * object_width, 0.5f * object_height, 0 },   // top right corner
     { 0.5f * object_width, -0.5f * object_height, 0 },  // bottom right corner
     { -0.5f * object_width, -0.5f * object_height, 0 }  // bottom left corner

@@ -39,8 +39,19 @@ class perspective_window: public window_3d
 {
 public:
   perspective_window(int width, int height)
-    : window_3d("Perspective View", width, height)
+    : window_3d("Perspective View", width, height),
+      m_object_points
+      {
+        // Positions of target LEDs in object-local space (world units), in
+        // progressive scan order (top to bottom, left to right) as they would
+        // appear when facing the camera
+        { -0.5f * k_object_width, 0.5f * k_object_height, 0 },  // top left
+        { 0.5f * k_object_width, 0.5f * k_object_height, 0 },   // top right corner
+        { -0.5f * k_object_width, -0.5f * k_object_height, 0 }, // bottom left corner
+        { 0.5f * k_object_width, -0.5f * k_object_height, 0 }   // bottom right corner
+      }
   {
+    assert(m_leds.size() == m_object_points.size());
   }
 
   void init(const pixart::settings &settings) override
@@ -58,43 +69,151 @@ public:
 
   void update(const std::array<PA_object, 16> &objs) override
   {
+    identify_leds(objs);
     perspective_update(objs);
     //draw_test_scene();
     //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
   }
 
 private:
+  struct led_position
+  {
+    int x = 0;
+    int y = 0;
+    int idx = -1;
+  };
+
   cv::Mat m_camera_intrinsic;
+  std::array<led_position, 4> m_leds;
   float m_distance = 0;
   float m_ya = 0;
 
+  static constexpr float k_object_width = 8e-2f;
+  static constexpr float k_object_height = 3e-2f;
+  const std::vector<cv::Point3f> m_object_points;
+
+  static int distance(const PA_object &led1, const PA_object &led2)
+  {
+    int dx = led1.cx - led2.cx;
+    int dy = led1.cy - led2.cy;
+    return dx*dx + dy*dy;
+  }
+  
+  //TODO: clean up hard-coded arrays 
+  struct edge
+  {
+    int idx1; // top-most (vertical edge) or left-most (horizontal edge)
+    int idx2;
+    float midpoint_x;
+    float midpoint_y;
+    
+    void set_vertical(int led1_idx, int led2_idx, const std::array<PA_object, 16> &leds)
+    {
+      if (leds[led1_idx].cy < leds[led2_idx].cy)
+      {
+        idx1 = led1_idx;
+        idx2 = led2_idx;  
+      }
+      else
+      {
+        idx1 = led2_idx;
+        idx2 = led1_idx;
+      }
+      midpoint_x = 0.5f * (leds[led1_idx].cx + leds[led2_idx].cx);
+      midpoint_y = 0.5f * (leds[led1_idx].cy + leds[led2_idx].cy);
+    }
+
+    void set_horizontal(int led1_idx, int led2_idx, const std::array<PA_object, 16> &leds)
+    {
+      if (leds[led1_idx].cx < leds[led2_idx].cx)
+      {
+        idx1 = led1_idx;
+        idx2 = led2_idx;  
+      }
+      else
+      {
+        idx1 = led2_idx;
+        idx2 = led1_idx;
+      }
+      midpoint_x = 0.5f * (leds[led1_idx].cx + leds[led2_idx].cx);
+      midpoint_y = 0.5f * (leds[led1_idx].cy + leds[led2_idx].cy);
+    }
+  };
+
+  void sort_by_distance_from(int base_idx, std::array<int, 3> &neighbors_out, const std::array<PA_object, 16> &objs)
+  {
+    // Neighbors of base
+    int j = 0;
+    for (int i = 0; i < neighbors_out.size() + 1; i++)
+    {
+      if (i != base_idx)
+      {
+        neighbors_out[j++] = i;
+      }
+    }
+    
+    // Sort by distance from base
+    std::sort(neighbors_out.begin(), neighbors_out.end(),
+      [base_idx, &objs](int idx1, int idx2)
+      {
+        return distance(objs[base_idx], objs[idx1]) < distance(objs[base_idx], objs[idx2]);
+      });
+  }
+  
+  void identify_leds(const std::array<PA_object, 16> &objs)
+  {
+    edge vertical[2];
+    edge horizontal[2];
+    
+    // Identify first vertical and horizontal edges
+    std::array<int, 3> neighbors;
+    int corner_idx = 0;
+    sort_by_distance_from(corner_idx, neighbors, objs);
+    vertical[0].set_vertical(corner_idx, neighbors[0], objs); // vertical edge is the shorter one
+    horizontal[0].set_horizontal(corner_idx, neighbors[1], objs);
+    
+    // The remaining unused corner will form remaining two edges
+    corner_idx = neighbors[2];
+    sort_by_distance_from(corner_idx, neighbors, objs);
+    vertical[1].set_vertical(corner_idx, neighbors[0], objs);
+    horizontal[1].set_horizontal(corner_idx, neighbors[1], objs);
+    
+    // Sort vertical edges from left to right
+    if (vertical[0].midpoint_x > vertical[1].midpoint_x)
+    {
+      std::swap(vertical[0], vertical[1]);
+    }
+    
+    //TODO: horizontal edges not needed
+    // Now we know which image points correspond to the 4 corners in scan order
+    m_leds[0].idx = vertical[0].idx1;
+    m_leds[1].idx = vertical[1].idx1;
+    m_leds[2].idx = vertical[0].idx2;
+    m_leds[3].idx = vertical[1].idx2;
+    for (int i = 0; i < 4; i++)
+    {
+      m_leds[i].x = objs[m_leds[i].idx].cx;
+      m_leds[i].y = objs[m_leds[i].idx].cy;
+    }
+  }
+
   void perspective_update(const std::array<PA_object, 16> &objs)
   {
-    // Define object in world units, object-local space
-    float object_width = 8e-2f;
-    float object_height = 3e-2f;
-    std::vector<cv::Point3f> object_points =
-    {
-      { -0.5f * object_width, 0.5f * object_height, 0 },      // top middle (facing camera)
-      { 0.5f * object_width, 0.5f * object_height, 0 },   // top right corner
-      { 0.5f * object_width, -0.5f * object_height, 0 },  // bottom right corner
-      { -0.5f * object_width, -0.5f * object_height, 0 }  // bottom left corner
-    };
-
     // Image points from sensor
-    std::vector<cv::Point2f> image_points =
+    std::vector<cv::Point2f> image_points;
+    image_points.reserve(m_object_points.size());
+    std::cout <<"--"<<std::endl;
+    for (auto &led: m_leds)
     {
-      { float(objs[0].cx), float(objs[0].cy) },
-      { float(objs[1].cx), float(objs[1].cy) },
-      { float(objs[2].cx), float(objs[2].cy) },
-      { float(objs[3].cx), float(objs[3].cy) }
-    };
+      image_points.emplace_back(float(led.x), float(led.y));
+      std::cout<<led.x<<","<<led.y<<std::endl;
+    }
     //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
 
     // Solve for model-view transform from image points
     cv::Mat rodrigues;
     cv::Mat translation;
-    bool result = cv::solvePnPRansac(object_points, image_points, m_camera_intrinsic, cv::Mat(), rodrigues, translation, false); //, cv::SOLVEPNP_ITERATIVE);
+    bool result = cv::solvePnPRansac(m_object_points, image_points, m_camera_intrinsic, cv::Mat(), rodrigues, translation, false); //, cv::SOLVEPNP_ITERATIVE);
 
     // Render
     if (result)

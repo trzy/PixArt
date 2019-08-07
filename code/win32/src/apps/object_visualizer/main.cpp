@@ -56,6 +56,7 @@ public:
 
   void init(const pixart::settings &settings) override
   {
+    m_settings = settings;
     float fx = pixart::camera_parameters::focal_length_x_pixels(settings.resolution_x);
     float fy = pixart::camera_parameters::focal_length_y_pixels(settings.resolution_y);
     float cx = 0.5f * settings.resolution_x;
@@ -69,13 +70,19 @@ public:
 
   void update(const std::array<PA_object, 16> &objs) override
   {
-    identify_leds(objs);
+    canonicalize_leds(objs);
     perspective_update(objs);
     //draw_test_scene();
     //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
   }
 
 private:
+  pixart::settings m_settings;
+  cv::Mat m_camera_intrinsic;
+  static constexpr float k_object_width = 8e-2f;
+  static constexpr float k_object_height = 3e-2f;
+  const std::vector<cv::Point3f> m_object_points;
+
   struct led_position
   {
     int x = 0;
@@ -83,14 +90,15 @@ private:
     int idx = -1;
   };
 
-  cv::Mat m_camera_intrinsic;
   std::array<led_position, 4> m_leds;
+
   float m_distance = 0;
   float m_ya = 0;
 
-  static constexpr float k_object_width = 8e-2f;
-  static constexpr float k_object_height = 3e-2f;
-  const std::vector<cv::Point3f> m_object_points;
+  static int is_on_screen(const PA_object &led)
+  {
+    return led.cx < 0xfff && led.cy < 0xfff;
+  }
 
   static int distance(const PA_object &led1, const PA_object &led2)
   {
@@ -98,21 +106,36 @@ private:
     int dy = led1.cy - led2.cy;
     return dx*dx + dy*dy;
   }
-  
-  //TODO: clean up hard-coded arrays 
+
+  static int distance(const led_position &led1, const PA_object &led2)
+  {
+    int dx = led1.x - led2.cx;
+    int dy = led1.y - led2.cy;
+    return dx*dx + dy*dy;
+  }
+
+  //TODO: PA_object cx,cy -> x,y and template all these
+  static int distance(const led_position &led1, const led_position &led2)
+  {
+    int dx = led1.x - led2.x;
+    int dy = led1.y - led2.y;
+    return dx*dx + dy*dy;
+  }
+
+  //TODO: clean up hard-coded arrays
   struct edge
   {
     int idx1; // top-most (vertical edge) or left-most (horizontal edge)
     int idx2;
     float midpoint_x;
     float midpoint_y;
-    
+
     void set_vertical(int led1_idx, int led2_idx, const std::array<PA_object, 16> &leds)
     {
       if (leds[led1_idx].cy < leds[led2_idx].cy)
       {
         idx1 = led1_idx;
-        idx2 = led2_idx;  
+        idx2 = led2_idx;
       }
       else
       {
@@ -128,7 +151,7 @@ private:
       if (leds[led1_idx].cx < leds[led2_idx].cx)
       {
         idx1 = led1_idx;
-        idx2 = led2_idx;  
+        idx2 = led2_idx;
       }
       else
       {
@@ -151,7 +174,7 @@ private:
         neighbors_out[j++] = i;
       }
     }
-    
+
     // Sort by distance from base
     std::sort(neighbors_out.begin(), neighbors_out.end(),
       [base_idx, &objs](int idx1, int idx2)
@@ -159,31 +182,31 @@ private:
         return distance(objs[base_idx], objs[idx1]) < distance(objs[base_idx], objs[idx2]);
       });
   }
-  
+
   void identify_leds(const std::array<PA_object, 16> &objs)
   {
     edge vertical[2];
     edge horizontal[2];
-    
+
     // Identify first vertical and horizontal edges
     std::array<int, 3> neighbors;
     int corner_idx = 0;
     sort_by_distance_from(corner_idx, neighbors, objs);
     vertical[0].set_vertical(corner_idx, neighbors[0], objs); // vertical edge is the shorter one
     horizontal[0].set_horizontal(corner_idx, neighbors[1], objs);
-    
+
     // The remaining unused corner will form remaining two edges
     corner_idx = neighbors[2];
     sort_by_distance_from(corner_idx, neighbors, objs);
     vertical[1].set_vertical(corner_idx, neighbors[0], objs);
     horizontal[1].set_horizontal(corner_idx, neighbors[1], objs);
-    
+
     // Sort vertical edges from left to right
     if (vertical[0].midpoint_x > vertical[1].midpoint_x)
     {
       std::swap(vertical[0], vertical[1]);
     }
-    
+
     //TODO: horizontal edges not needed
     // Now we know which image points correspond to the 4 corners in scan order
     m_leds[0].idx = vertical[0].idx1;
@@ -194,6 +217,94 @@ private:
     {
       m_leds[i].x = objs[m_leds[i].idx].cx;
       m_leds[i].y = objs[m_leds[i].idx].cy;
+    }
+  }
+
+  static int find_shortest_distance(const std::array<led_position, 4> &leds)
+  {
+    int shortest = std::numeric_limits<int>::max();
+
+    for (int i = 0; i < leds.size(); i++)
+    {
+      if (leds[i].idx < 0)
+      {
+        // Not assigned
+        continue;
+      }
+
+      for (int j = i + 1; j < leds.size(); j++)
+      {
+        if (leds[j].idx < 0)
+        {
+          continue;
+        }
+        shortest = std::min(shortest, distance(leds[i], leds[j]));
+      }
+    }
+
+    return shortest;
+  }
+
+  //TODO: rename leds to sensor_observations or something
+  size_t match_to_prior(const std::array<PA_object, 16> &leds, int distance_threshold)
+  {
+    size_t num_matched = 0;
+
+    std::array<bool, 16> used;
+    std::fill_n(used.begin(), used.size(), false);
+
+    // For each LED identified in previous frame...
+    for (int i = 0; i < m_leds.size(); i++)
+    {
+      led_position &prev_frame = m_leds[i];
+      if (prev_frame.idx < 0)
+      {
+        // Previous frame position did not exist. Cannot track.
+        continue;
+      }
+
+      // Greedily find nearest LED in *this* frame that has not yet been used
+      int best_idx = -1;
+      int best_distance = std::numeric_limits<int>::max();
+      for (int j = 0; j < leds.size(); j++)
+      {
+        if (used[j] || !is_on_screen(leds[j]))
+        {
+          continue;
+        }
+
+        int dist = distance (prev_frame, leds[j]);
+        if (dist < best_distance && dist < distance_threshold)
+        {
+          best_idx = j;
+          best_distance = dist;
+        }
+      }
+
+      // If we found something, update
+      if (best_idx >= 0)
+      {
+        m_leds[i].idx = best_idx;
+        m_leds[i].x = leds[best_idx].cx;
+        m_leds[i].y = leds[best_idx].cy;
+        num_matched += 1;
+        used[best_idx] = true;
+      }
+    }
+    std::cout << "matched="<<num_matched<<std::endl;
+    return num_matched;
+  }
+
+  void canonicalize_leds(const std::array<PA_object, 16> &leds)
+  {
+    // Try matching to prior frame
+    int threshold = find_shortest_distance(m_leds) / 4; // 4 because all distances are square distances
+    size_t num_matched = match_to_prior(leds, threshold);
+
+    // If could not match all, perform ab initio identification
+    if (num_matched < m_leds.size())
+    {
+      identify_leds(leds);
     }
   }
 

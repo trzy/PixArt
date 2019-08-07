@@ -7,8 +7,8 @@ namespace pixart
 
   struct settings
   {
-    const uint16_t resolution_x;
-    const uint16_t resolution_y;
+    uint16_t resolution_x;
+    uint16_t resolution_y;
   };
 
 } // pixart

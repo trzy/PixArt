@@ -268,7 +268,9 @@ private:
 
   void canonicalize_leds(const std::array<PA_object, 16> &leds)
   {
-    // Try matching to prior frame
+    // Try matching to prior frame. Use half the distance of the vertical edge
+    // (which should be the shortest distance between LEDs in sensor frame) as
+    // threshold.
     int threshold = find_shortest_distance(m_leds) / 4; // 4 because all distances are square distances
     size_t num_matched = match_to_prior(leds, threshold);
 

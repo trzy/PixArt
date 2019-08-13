@@ -204,7 +204,7 @@ int main(int argc, char **argv)
 
     if (config[k_view_3d].ValueAs<bool>())
     {
-      auto window = std::make_shared<perspective_window>(config[k_res3d]["width"].ValueAs<int>(), config[k_res3d]["height"].ValueAs<int>());
+      auto window = create_perspective_window(config[k_res3d]["width"].ValueAs<int>(), config[k_res3d]["height"].ValueAs<int>());
       windows.insert(window);
     }
 

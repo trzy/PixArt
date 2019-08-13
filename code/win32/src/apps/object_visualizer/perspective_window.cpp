@@ -34,7 +34,7 @@ public:
       fx, 0,  cx,
       0,  fy, cy,
       0,  0,  1);
-    std::cout << "fx="<<fx<<std::endl;
+    //std::cout << "fx="<<fx<<std::endl;
   }
 
   void update(const std::array<PA_object, 16> &objs)
@@ -261,7 +261,8 @@ private:
         used[best_idx] = true;
       }
     }
-    std::cout << "matched="<<num_matched<<std::endl;
+
+    //std::cout << "matched="<<num_matched<<std::endl;
     return num_matched;
   }
 
@@ -283,11 +284,11 @@ private:
     // Image points from sensor
     std::vector<cv::Point2f> image_points;
     image_points.reserve(m_object_points.size());
-    std::cout <<"--"<<std::endl;
+    //std::cout <<"--"<<std::endl;
     for (auto &led: m_leds)
     {
       image_points.emplace_back(float(led.x), float(led.y));
-      std::cout<<led.x<<","<<led.y<<std::endl;
+      //std::cout<<led.x<<","<<led.y<<std::endl;
     }
     //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
 

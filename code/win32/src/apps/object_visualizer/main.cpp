@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 
     if (config[k_view_objs].ValueAs<bool>())
     {
-      auto window = std::make_shared<object_window>(config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
+      auto window = create_object_window(config[k_res2d]["width"].ValueAs<int>(), config[k_res2d]["height"].ValueAs<int>());
       windows.insert(window);
     }
 

@@ -2,12 +2,8 @@
 #define INCLUDED_OBJECT_WINDOW_HPP
 
 #include "apps/object_visualizer/window.hpp"
+#include <memory>
 
-class object_window: public window_3d
-{
-public:
-  object_window(int width, int height);
-  void update(const std::array<PA_object, 16> &objs) override;
-};
+std::shared_ptr<i_window> create_object_window(int width, int height);
 
 #endif  // INCLUDED_OBJECT_WINDOW_HPP

@@ -2,8 +2,15 @@
 #define INCLUDED_PERSPECTIVE_WINDOW_HPP
 
 #include "apps/object_visualizer/window.hpp"
+#include "util/config.hpp"
 #include <memory>
 
-std::shared_ptr<i_window> create_perspective_window(int width, int height);
+namespace perspective_window
+{
+  static constexpr const char *k_enabled = "PerspectiveViewWindow/Enabled";
+  static constexpr const char *k_resolution = "PerspectiveViewWindow/Resolution";
+
+  std::shared_ptr<i_window> create(const util::config::Node &config);
+}
 
 #endif  // INCLUDED_PERSPECTIVE_WINDOW_HPP

@@ -4,10 +4,10 @@
 #include <opencv2/opencv.hpp>
 #include <algorithm>
 
-class perspective_window: public window_3d
+class perspective_window_impl: public window_3d
 {
 public:
-  perspective_window(int width, int height)
+  perspective_window_impl(int width, int height)
     : window_3d("Perspective View", width, height),
       m_object_points
       {
@@ -149,7 +149,7 @@ private:
     std::sort(neighbors_out.begin(), neighbors_out.end(),
       [base_idx, &objs](int idx1, int idx2)
       {
-        return perspective_window::distance(objs[base_idx], objs[idx1]) < perspective_window::distance(objs[base_idx], objs[idx2]);
+        return perspective_window_impl::distance(objs[base_idx], objs[idx1]) < perspective_window_impl::distance(objs[base_idx], objs[idx2]);
       });
   }
 
@@ -382,7 +382,12 @@ private:
   }
 };
 
-std::shared_ptr<i_window> create_perspective_window(int width, int height)
+namespace perspective_window
 {
-  return std::make_shared<perspective_window>(width, height);
+  std::shared_ptr<i_window> create(const util::config::Node &config)
+  {
+    int width = config[k_resolution]["width"].ValueAs<int>();
+    int height = config[k_resolution]["height"].ValueAs<int>();
+    return std::make_shared<perspective_window_impl>(width, height);
+  }
 }

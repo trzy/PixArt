@@ -31,8 +31,6 @@ static constexpr const char *k_print_settings = "SettingsPrintout/Enabled";
 static constexpr const char *k_print_objs = "ObjectASCIIPrintout/Enabled";
 static constexpr const char *k_view_objs = "ObjectViewWindow/Enabled";
 static constexpr const char *k_res2d = "ObjectViewWindow/Resolution";
-static constexpr const char *k_view_3d = "PerspectiveViewWindow/Enabled";
-static constexpr const char *k_res3d = "PerspectiveViewWindow/Resolution";
 
 static void remove_window(std::set<std::shared_ptr<i_window>> *windows, SDL_Window *sdl_window)
 {
@@ -174,8 +172,8 @@ int main(int argc, char **argv)
       switch_option({ "--print-objects" }, k_print_objs, "Print objects for single frame."),
       default_valued_option("--view-objects", util::command_line::boolean(), "true", k_view_objs, "Schematic view of detected objects in sensor frame."),
       default_multivalued_option("--res-2d", { integer("width"), integer("height") }, "392,392", k_res2d, "Resolution of 2D object view window."),
-      default_valued_option("--view-3d", util::command_line::boolean(), "true", k_view_3d, "Perspective view of detected objects."),
-      default_multivalued_option("--res-3d", { integer("width"), integer("height") }, "640,640", k_res3d, "Resolution of perspective view window.")
+      default_valued_option("--view-3d", util::command_line::boolean(), "true", perspective_window::k_enabled, "Perspective view of detected objects."),
+      default_multivalued_option("--res-3d", { integer("width"), integer("height") }, "640,640", perspective_window::k_resolution, "Resolution of perspective view window.")
     };
     auto state = parse_command_line(&config, options, argc, argv);
     if (state.exit)
@@ -202,9 +200,9 @@ int main(int argc, char **argv)
       windows.insert(window);
     }
 
-    if (config[k_view_3d].ValueAs<bool>())
+    if (config[perspective_window::k_enabled].ValueAs<bool>())
     {
-      auto window = create_perspective_window(config[k_res3d]["width"].ValueAs<int>(), config[k_res3d]["height"].ValueAs<int>());
+      auto window = perspective_window::create(config);
       windows.insert(window);
     }
 

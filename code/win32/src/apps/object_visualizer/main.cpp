@@ -171,7 +171,9 @@ int main(int argc, char **argv)
       default_valued_option("--view-objects", util::command_line::boolean(), "true", object_window::k_enabled, "Schematic view of detected objects in sensor frame."),
       default_multivalued_option("--res-2d", { integer("width"), integer("height") }, "392,392", object_window::k_resolution, "Resolution of 2D object view window."),
       default_valued_option("--view-3d", util::command_line::boolean(), "true", perspective_window::k_enabled, "Perspective view of detected objects."),
-      default_multivalued_option("--res-3d", { integer("width"), integer("height") }, "640,640", perspective_window::k_resolution, "Resolution of perspective view window.")
+      default_multivalued_option("--res-3d", { integer("width"), integer("height") }, "640,640", perspective_window::k_resolution, "Resolution of perspective view window."),
+      default_valued_option("--solver", string("name"), "iterative", perspective_window::k_solver, "PnP solver algorithm."),
+      switch_option({ "--ransac" }, perspective_window::k_ransac, "Use RANSAC PnP solution scheme.")
     };
     auto state = parse_command_line(&config, options, argc, argv);
     if (state.exit)

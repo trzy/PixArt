@@ -1,3 +1,14 @@
+/*
+ * Solves for pose and renders a 3D representation of the target LED board.
+ *
+ * Notes:
+ * ------
+ * - OpenCV 4.0.1 is assumed. Careful attention must be paid to
+ *   solvePnPRANSAC(), whose function signature differed in earlier versions
+ *   but in a way that the compiler would not catch (an integer parameter
+ *   changed to a double).
+ */
+
 #include "apps/object_visualizer/perspective_window.hpp"
 #include "apps/object_visualizer/render.hpp"
 #include "pixart/camera_parameters.hpp"
@@ -7,8 +18,9 @@
 class perspective_window_impl: public window_3d
 {
 public:
-  perspective_window_impl(int width, int height, const std::string &algo)
+  perspective_window_impl(int width, int height, const std::string &solver_name, bool use_ransac)
     : window_3d("Perspective View", width, height),
+      m_use_ransac(use_ransac),
       m_object_points
       {
         // Positions of target LEDs in object-local space (world units), in
@@ -21,8 +33,23 @@ public:
       }
   {
     assert(m_leds.size() == m_object_points.size());
-    m_pnp_solver = &perspective_window_impl::solve;
-    m_solver_algo = cv::SOLVEPNP_ITERATIVE;
+
+    std::map<std::string, int> solver_flags_by_name
+    {
+      { "iterative",  cv::SOLVEPNP_ITERATIVE },
+      { "p3p",        cv::SOLVEPNP_P3P },
+      { "ap3p",       cv::SOLVEPNP_AP3P },
+      { "epnp",       cv::SOLVEPNP_EPNP },
+      { "dls",        cv::SOLVEPNP_DLS },
+      { "upnp",       cv::SOLVEPNP_UPNP }
+    };
+
+    auto it = solver_flags_by_name.find(solver_name);
+    if (it == solver_flags_by_name.end())
+    {
+      throw std::runtime_error(util::format() << "Invalid PnP solver algorithm: " << solver_name);
+    }
+    m_solver_algo = it->second;
   }
 
   void init(const pixart::settings &settings)
@@ -47,9 +74,8 @@ public:
   }
 
 private:
-  typedef bool (perspective_window_impl::*solver_callback)(int algo, const std::vector<cv::Point3f> &object_points, const std::vector<cv::Point2f> &image_points, cv::Mat &rotation, cv::Mat &translation);
-  solver_callback m_pnp_solver;
   int m_solver_algo;
+  bool m_use_ransac;
 
   cv::Mat m_camera_intrinsic;
   static constexpr float k_object_width = 8e-2f;
@@ -301,7 +327,7 @@ private:
     // Solve for model-view transform from image points
     cv::Mat rodrigues;
     cv::Mat translation;
-    bool result = (this->*(m_pnp_solver))(m_solver_algo, m_object_points, image_points, rodrigues, translation);//cv::solvePnPRansac(m_object_points, image_points, m_camera_intrinsic, cv::Mat(), rodrigues, translation, false); //, cv::SOLVEPNP_ITERATIVE);
+    bool result = solve_pnp(m_object_points, image_points, rodrigues, translation);
 
     // Render
     if (result)
@@ -331,17 +357,19 @@ private:
     }
   }
 
-  bool solve(int algo, const std::vector<cv::Point3f> &object_points, const std::vector<cv::Point2f> &image_points, cv::Mat &rotation, cv::Mat &translation)
+  bool solve_pnp(const std::vector<cv::Point3f> &object_points, const std::vector<cv::Point2f> &image_points, cv::Mat &rotation, cv::Mat &translation)
   {
-    return cv::solvePnP(object_points, image_points, m_camera_intrinsic, cv::Mat(), rotation, translation, false, algo);
-  }
-
-  bool solve_ransac(int algo, const std::vector<cv::Point3f> &object_points, const std::vector<cv::Point2f> &image_points, cv::Mat &rotation, cv::Mat &translation)
-  {
-    int iterations = 100;
-    float reprojection_error = 8;
-    int min_inliners = 100;
-    return cv::solvePnPRansac(object_points, image_points, m_camera_intrinsic, cv::Mat(), rotation, translation, false, iterations, reprojection_error, min_inliners, cv::noArray(), algo);
+    if (m_use_ransac)
+    {
+      int iterations = 100;
+      float reprojection_error = 8;
+      double confidence = 0.99;
+      return cv::solvePnPRansac(object_points, image_points, m_camera_intrinsic, cv::Mat(), rotation, translation, false, iterations, reprojection_error, confidence, cv::noArray(), m_solver_algo);
+    }
+    else
+    {
+      return cv::solvePnP(object_points, image_points, m_camera_intrinsic, cv::Mat(), rotation, translation, false, m_solver_algo);
+    }
   }
 
   void draw_led_board(render::vector3 position, render::euler3 rotation)
@@ -405,6 +433,8 @@ namespace perspective_window
   {
     int width = config[k_resolution]["width"].ValueAs<int>();
     int height = config[k_resolution]["height"].ValueAs<int>();
-    return std::make_shared<perspective_window_impl>(width, height, "iterative");
+    std::string solver_name = util::to_lower(config[k_solver].ValueAs<std::string>());
+    bool use_ransac = config[k_ransac].ValueAs<bool>();
+    return std::make_shared<perspective_window_impl>(width, height, solver_name, use_ransac);
   }
 }

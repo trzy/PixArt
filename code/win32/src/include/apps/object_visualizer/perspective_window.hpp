@@ -9,7 +9,8 @@ namespace perspective_window
 {
   static constexpr const char *k_enabled = "PerspectiveViewWindow/Enabled";
   static constexpr const char *k_resolution = "PerspectiveViewWindow/Resolution";
-  static constexpr const char *k_algo = "PerspectiveViewWindow/PnPAlgorithm";
+  static constexpr const char *k_solver = "PerspectiveViewWindow/PnPSolverAlgorithm";
+  static constexpr const char *k_ransac = "PerspectiveViewWindow/UseRANSAC";
 
   std::shared_ptr<i_window> create(const util::config::Node &config);
 }

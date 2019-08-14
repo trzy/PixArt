@@ -7,7 +7,7 @@
 class perspective_window_impl: public window_3d
 {
 public:
-  perspective_window_impl(int width, int height)
+  perspective_window_impl(int width, int height, const std::string &algo)
     : window_3d("Perspective View", width, height),
       m_object_points
       {
@@ -21,11 +21,12 @@ public:
       }
   {
     assert(m_leds.size() == m_object_points.size());
+    m_pnp_solver = &perspective_window_impl::solve;
+    m_solver_algo = cv::SOLVEPNP_ITERATIVE;
   }
 
   void init(const pixart::settings &settings)
   {
-    m_settings = settings;
     float fx = pixart::camera_parameters::focal_length_x_pixels(settings.resolution_x);
     float fy = pixart::camera_parameters::focal_length_y_pixels(settings.resolution_y);
     float cx = 0.5f * settings.resolution_x;
@@ -46,7 +47,10 @@ public:
   }
 
 private:
-  pixart::settings m_settings;
+  typedef bool (perspective_window_impl::*solver_callback)(int algo, const std::vector<cv::Point3f> &object_points, const std::vector<cv::Point2f> &image_points, cv::Mat &rotation, cv::Mat &translation);
+  solver_callback m_pnp_solver;
+  int m_solver_algo;
+
   cv::Mat m_camera_intrinsic;
   static constexpr float k_object_width = 8e-2f;
   static constexpr float k_object_height = 3e-2f;
@@ -297,7 +301,7 @@ private:
     // Solve for model-view transform from image points
     cv::Mat rodrigues;
     cv::Mat translation;
-    bool result = cv::solvePnPRansac(m_object_points, image_points, m_camera_intrinsic, cv::Mat(), rodrigues, translation, false); //, cv::SOLVEPNP_ITERATIVE);
+    bool result = (this->*(m_pnp_solver))(m_solver_algo, m_object_points, image_points, rodrigues, translation);//cv::solvePnPRansac(m_object_points, image_points, m_camera_intrinsic, cv::Mat(), rodrigues, translation, false); //, cv::SOLVEPNP_ITERATIVE);
 
     // Render
     if (result)
@@ -325,6 +329,19 @@ private:
       // Draw board
       draw_led_board(vector3::zero(), euler3::zero());
     }
+  }
+
+  bool solve(int algo, const std::vector<cv::Point3f> &object_points, const std::vector<cv::Point2f> &image_points, cv::Mat &rotation, cv::Mat &translation)
+  {
+    return cv::solvePnP(object_points, image_points, m_camera_intrinsic, cv::Mat(), rotation, translation, false, algo);
+  }
+
+  bool solve_ransac(int algo, const std::vector<cv::Point3f> &object_points, const std::vector<cv::Point2f> &image_points, cv::Mat &rotation, cv::Mat &translation)
+  {
+    int iterations = 100;
+    float reprojection_error = 8;
+    int min_inliners = 100;
+    return cv::solvePnPRansac(object_points, image_points, m_camera_intrinsic, cv::Mat(), rotation, translation, false, iterations, reprojection_error, min_inliners, cv::noArray(), algo);
   }
 
   void draw_led_board(render::vector3 position, render::euler3 rotation)
@@ -388,6 +405,6 @@ namespace perspective_window
   {
     int width = config[k_resolution]["width"].ValueAs<int>();
     int height = config[k_resolution]["height"].ValueAs<int>();
-    return std::make_shared<perspective_window_impl>(width, height);
+    return std::make_shared<perspective_window_impl>(width, height, "iterative");
   }
 }

@@ -1,9 +1,9 @@
 #include "apps/object_visualizer/object_window.hpp"
 
-class object_window: public window_3d
+class object_window_impl: public window_3d
 {
 public:
-  object_window(int width, int height)
+  object_window_impl(int width, int height)
     : window_3d("PixArt Object View", width, height)
   {
   }
@@ -53,7 +53,12 @@ public:
   }
 };
 
-std::shared_ptr<i_window> create_object_window(int width, int height)
+namespace object_window
 {
-  return std::make_shared<object_window>(width, height);
+  std::shared_ptr<i_window> create(const util::config::Node &config)
+  {
+    int width = config[k_resolution]["width"].ValueAs<int>();
+    int height = config[k_resolution]["height"].ValueAs<int>();
+    return std::make_shared<object_window_impl>(width, height);
+  }
 }

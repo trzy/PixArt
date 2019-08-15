@@ -7,6 +7,10 @@
  *   solvePnPRANSAC(), whose function signature differed in earlier versions
  *   but in a way that the compiler would not catch (an integer parameter
  *   changed to a double).
+ * - Need to read up on 2D-3D point correspondence algorithms. A promising
+ *   paper is: "A Quick 3D-to-2D Points Matching based on the Perspective
+ *   Projection" by Songxiang Gu, Clifford Lindsay, Michael A. Gennert, and
+ *   Michael A. King.
  */
 
 #include "apps/object_visualizer/perspective_window.hpp"

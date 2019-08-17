@@ -112,3 +112,15 @@ pixart::settings read_sensor_settings(i_serial_device *port, bool print_settings
   // Return settings object
   return pixart::settings{ resolution_x: interpolated_resolution_x, resolution_y: interpolated_resolution_y };
 }
+
+void write_sensor_settings(i_serial_device *port, const pixart::settings &settings)
+{
+  poke_packet resolution_x_hi(0x0c, 0x61, (settings.resolution_x >> 8) & 0x0f);
+  poke_packet resolution_x_lo(0x0c, 0x60, settings.resolution_x & 0xff);
+  poke_packet resolution_y_hi(0x0c, 0x63, (settings.resolution_y >> 8) & 0x0f);
+  poke_packet resolution_y_lo(0x0c, 0x62, settings.resolution_y & 0xff);
+  port->write(resolution_x_hi);
+  port->write(resolution_x_lo);
+  port->write(resolution_y_hi);
+  port->write(resolution_y_lo);
+}

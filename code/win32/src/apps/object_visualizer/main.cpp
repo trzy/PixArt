@@ -29,6 +29,7 @@ static constexpr const char *k_record_to = "Arduino/SerialPort/Record";
 static constexpr const char *k_replay_from = "Arduino/SerialPort/Replay";
 static constexpr const char *k_print_settings = "SettingsPrintout/Enabled";
 static constexpr const char *k_print_objs = "ObjectASCIIPrintout/Enabled";
+static constexpr const char *k_sensor_resolution = "SensorScaleResolution";
 
 static void remove_window(std::set<std::shared_ptr<i_window>> *windows, SDL_Window *sdl_window)
 {
@@ -122,6 +123,14 @@ static void render_frames(i_serial_device *port, const pixart::settings &setting
   }
 }
 
+static void configure_sensor(i_serial_device *port, const util::config::Node &config)
+{
+  pixart::settings settings;
+  settings.resolution_x = config[k_sensor_resolution]["width"].ValueAs<uint16_t>();
+  settings.resolution_y = config[k_sensor_resolution]["height"].ValueAs<uint16_t>();
+  write_sensor_settings(port, settings);
+}
+
 static std::shared_ptr<i_serial_device> create_serial_connection(const util::config::Node &config)
 {
   const std::string port_name = config[k_port].Value<std::string>();
@@ -173,7 +182,8 @@ int main(int argc, char **argv)
       default_valued_option("--view-3d", util::command_line::boolean(), "true", perspective_window::k_enabled, "Perspective view of detected objects."),
       default_multivalued_option("--res-3d", { integer("width"), integer("height") }, "640,640", perspective_window::k_resolution, "Resolution of perspective view window."),
       default_valued_option("--solver", string("name"), "iterative", perspective_window::k_solver, "PnP solver algorithm."),
-      switch_option({ "--ransac" }, perspective_window::k_ransac, "Use RANSAC PnP solution scheme.")
+      switch_option({ "--ransac" }, perspective_window::k_ransac, "Use RANSAC PnP solution scheme."),
+      default_multivalued_option("--sensor-res", { integer("width", 1, 4095), integer("height", 1, 4095) }, "2940,2940", k_sensor_resolution, "Sensor coordinate resolution.")
     };
     auto state = parse_command_line(&config, options, argc, argv);
     if (state.exit)
@@ -208,6 +218,7 @@ int main(int argc, char **argv)
 
     std::shared_ptr<i_serial_device> arduino_port = create_serial_connection(config);
 
+    configure_sensor(arduino_port.get(), config);
     pixart::settings settings = read_sensor_settings(arduino_port.get(), config[k_print_settings].ValueAs<bool>());
 
     if (config[k_print_objs].ValueAs<bool>())

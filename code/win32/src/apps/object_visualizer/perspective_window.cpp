@@ -357,7 +357,8 @@ private:
       node::transform transform(rotation, translation);
 
       // Draw board
-      draw_led_board(vector3::zero(), euler3::zero());
+      //draw_led_board(vector3::zero(), euler3::zero());
+      draw_paddle(vector3::zero(), euler3::zero());
     }
   }
 
@@ -374,6 +375,35 @@ private:
     {
       return cv::solvePnP(object_points, image_points, m_camera_intrinsic, cv::Mat(), rotation, translation, false, m_solver_algo);
     }
+  }
+
+  void draw_paddle(render::vector3 position, render::euler3 rotation)
+  {
+    using namespace render;
+
+    color3 paddle_color(0.7f, 0.2f, 0.2f);
+    color3 handle_color(0.6f, 0.6f, 0.2f);
+    float paddle_diameter = 16.5e-2f; // excluding handle
+    float paddle_radius = 0.5f * paddle_diameter;
+    float paddle_thickness = 1e-2f;
+
+    node::transform transform(position, vector3::one(), rotation);
+
+    // Paddle
+    {
+      node::rotate rotate(euler3(90, 0, 0));
+      node::cylinder paddle(vector3::zero(), paddle_radius, paddle_thickness, euler3::zero(), paddle_color);
+    }
+
+    // Handle
+    float handle_height = 10e-2f;
+    float handle_width = 2.5e-2f;
+    node::translate handle_attach_position(vector3(0, 1, 0) * (-paddle_radius + 2e-2f));
+    node::translate handle_center(vector3::up() * -handle_height * 0.5f);
+    node::box handle(vector3::zero(), vector3(handle_width, handle_height, handle_width), euler3::zero(), handle_color);
+
+    // LED board affixed to paddle
+    draw_led_board(vector3::forward() * (0.5f * paddle_thickness + 0.001f), euler3::zero());
   }
 
   void draw_led_board(render::vector3 position, render::euler3 rotation)
@@ -423,7 +453,8 @@ private:
       float horizontal_fov = 60;
       float aspect = float(width()) / float(height());
       set_camera(60, aspect, vector3(0, -0.1f, 0), euler3(30, 0, 0));
-      draw_led_board(vector3::forward() * m_distance, euler3::up() * m_ya);
+      //draw_led_board(vector3::forward() * m_distance, euler3::up() * m_ya);
+      draw_paddle(vector3::forward() * m_distance, euler3::up() * m_ya);
     }
 
     m_distance += .05f * (1 / 60.0f) ;

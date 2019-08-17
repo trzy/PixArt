@@ -2,6 +2,10 @@
 #include <opencv2/opencv.hpp>
 #include <GL/gl.h>
 #include <GL/glu.h>
+#include <cmath>
+
+static constexpr float k_pi = (float) atan(1) * 4;
+static constexpr float k_deg2rad = k_pi / 180;
 
 namespace render
 {
@@ -94,6 +98,51 @@ namespace render
     }
 
     box::~box()
+    {
+      glPopMatrix();
+    }
+
+    cylinder::cylinder(vector3 position, float radius, float height, euler3 rotation, color3 color)
+    {
+      glPushMatrix();
+      glRotatef(rotation.z, 0, 0, 1);
+      glRotatef(rotation.y, 0, 1, 0);
+      glRotatef(rotation.x, 1, 0, 0);
+      glScalef(radius, height, radius);
+      glColor3f(color.r, color.g, color.b);
+      glBegin(GL_TRIANGLES);
+      int steps = 100;
+      float degreesPerStep = k_deg2rad * (360.0f / steps);
+      for (int i = 0; i < steps; i++)
+      {
+        float x1 = cos(degreesPerStep * i);
+        float z1 = sin(degreesPerStep * i);
+        float x2 = cos(degreesPerStep * (i + 1));
+        float z2 = sin(degreesPerStep * (i + 1));
+
+        // Front side
+        glVertex3f(0, 0.5f, 0);
+        glVertex3f(x1, 0.5f, z1);
+        glVertex3f(x2, 0.5f, z2);
+
+        // Back side
+        glVertex3f(0, -0.5f, 0);
+        glVertex3f(x2, -0.5f, z2);
+        glVertex3f(x1, -0.5f, z1);
+
+        // Edge
+        glVertex3f(x1, 0.5f, z1);
+        glVertex3f(x1, -0.5f, z1);
+        glVertex3f(x2, 0.5f, z2);
+        glVertex3f(x2, 0.5f, z2);
+        glVertex3f(x1, -0.5f, z1);
+        glVertex3f(x2, -0.5f, z2);
+
+      }
+      glEnd();
+    }
+
+    cylinder::~cylinder()
     {
       glPopMatrix();
     }

@@ -181,6 +181,12 @@ namespace render
       ~box();
     };
 
+    struct cylinder
+    {
+      cylinder(vector3 position, float radius, float height, euler3 rotation, color3 color);
+      ~cylinder();
+    };
+
   } // node
 
 } // render

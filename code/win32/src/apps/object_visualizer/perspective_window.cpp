@@ -25,18 +25,18 @@ public:
   perspective_window_impl(int width, int height, const std::string &solver_name, bool use_ransac)
     : window_3d("Perspective View", width, height),
       m_use_ransac(use_ransac),
-      m_object_points
+      m_target_points
       {
         // Positions of target LEDs in object-local space (world units), in
         // progressive scan order (top to bottom, left to right) as they would
         // appear when facing the camera
-        { -0.5f * k_object_width, 0.5f * k_object_height, 0 },  // top left
-        { 0.5f * k_object_width, 0.5f * k_object_height, 0 },   // top right corner
-        { -0.5f * k_object_width, -0.5f * k_object_height, 0 }, // bottom left corner
-        { 0.5f * k_object_width, -0.5f * k_object_height, 0 }   // bottom right corner
+        { -0.5f * k_target_width, 0.5f * k_target_height, 0 },  // top left
+        { 0.5f * k_target_width, 0.5f * k_target_height, 0 },   // top right corner
+        { -0.5f * k_target_width, -0.5f * k_target_height, 0 }, // bottom left corner
+        { 0.5f * k_target_width, -0.5f * k_target_height, 0 }   // bottom right corner
       }
   {
-    assert(m_leds.size() == m_object_points.size());
+    assert(m_leds.size() == m_target_points.size());
 
     std::map<std::string, int> solver_flags_by_name
     {
@@ -66,15 +66,13 @@ public:
       fx, 0,  cx,
       0,  fy, cy,
       0,  0,  1);
-    //std::cout << "fx="<<fx<<std::endl;
   }
 
   void update(const std::array<PA_object, 16> &objs)
   {
     canonicalize_leds(objs);
-    perspective_update(objs);
+    perspective_update();
     //draw_test_scene();
-    //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
   }
 
 private:
@@ -82,50 +80,32 @@ private:
   bool m_use_ransac;
 
   cv::Mat m_camera_intrinsic;
-  static constexpr float k_object_width = 8e-2f;
-  static constexpr float k_object_height = 3e-2f;
-  const std::vector<cv::Point3f> m_object_points;
+  static constexpr float k_target_width = 8e-2f;
+  static constexpr float k_target_height = 3e-2f;
+  const std::vector<cv::Point3f> m_target_points;
 
   struct led_position
   {
-    int x = 0;
-    int y = 0;
+    int cx = 0;
+    int cy = 0;
     int idx = -1;
   };
 
   std::array<led_position, 4> m_leds;
-
-  float m_distance = 0;
-  float m_ya = 0;
 
   static int is_on_screen(const PA_object &led)
   {
     return led.cx < 0xfff && led.cy < 0xfff;
   }
 
-  static int distance(const PA_object &led1, const PA_object &led2)
+  template <typename T1, typename T2>
+  static int distance(const T1 &led1, const T2 &led2)
   {
     int dx = led1.cx - led2.cx;
     int dy = led1.cy - led2.cy;
     return dx*dx + dy*dy;
   }
 
-  static int distance(const led_position &led1, const PA_object &led2)
-  {
-    int dx = led1.x - led2.cx;
-    int dy = led1.y - led2.cy;
-    return dx*dx + dy*dy;
-  }
-
-  //TODO: PA_object cx,cy -> x,y and template all these
-  static int distance(const led_position &led1, const led_position &led2)
-  {
-    int dx = led1.x - led2.x;
-    int dy = led1.y - led2.y;
-    return dx*dx + dy*dy;
-  }
-
-  //TODO: clean up hard-coded arrays
   struct edge
   {
     int idx1; // top-most (vertical edge) or left-most (horizontal edge)
@@ -133,9 +113,9 @@ private:
     float midpoint_x;
     float midpoint_y;
 
-    void set_vertical(int led1_idx, int led2_idx, const std::array<PA_object, 16> &leds)
+    void set_vertical(int led1_idx, int led2_idx, const std::array<PA_object, 16> &objs)
     {
-      if (leds[led1_idx].cy < leds[led2_idx].cy)
+      if (objs[led1_idx].cy < objs[led2_idx].cy)
       {
         idx1 = led1_idx;
         idx2 = led2_idx;
@@ -145,13 +125,13 @@ private:
         idx1 = led2_idx;
         idx2 = led1_idx;
       }
-      midpoint_x = 0.5f * (leds[led1_idx].cx + leds[led2_idx].cx);
-      midpoint_y = 0.5f * (leds[led1_idx].cy + leds[led2_idx].cy);
+      midpoint_x = 0.5f * (objs[led1_idx].cx + objs[led2_idx].cx);
+      midpoint_y = 0.5f * (objs[led1_idx].cy + objs[led2_idx].cy);
     }
 
-    void set_horizontal(int led1_idx, int led2_idx, const std::array<PA_object, 16> &leds)
+    void set_horizontal(int led1_idx, int led2_idx, const std::array<PA_object, 16> &objs)
     {
-      if (leds[led1_idx].cx < leds[led2_idx].cx)
+      if (objs[led1_idx].cx < objs[led2_idx].cx)
       {
         idx1 = led1_idx;
         idx2 = led2_idx;
@@ -161,11 +141,10 @@ private:
         idx1 = led2_idx;
         idx2 = led1_idx;
       }
-      midpoint_x = 0.5f * (leds[led1_idx].cx + leds[led2_idx].cx);
-      midpoint_y = 0.5f * (leds[led1_idx].cy + leds[led2_idx].cy);
+      midpoint_x = 0.5f * (objs[led1_idx].cx + objs[led2_idx].cx);
+      midpoint_y = 0.5f * (objs[led1_idx].cy + objs[led2_idx].cy);
     }
   };
-
 
   void sort_by_distance_from(int base_idx, std::array<int, 3> &neighbors_out, const std::array<PA_object, 16> &objs)
   {
@@ -211,16 +190,16 @@ private:
       std::swap(vertical[0], vertical[1]);
     }
 
-    //TODO: horizontal edges not needed
     // Now we know which image points correspond to the 4 corners in scan order
+    // Note: horizontal edges were never actually needed
     m_leds[0].idx = vertical[0].idx1;
     m_leds[1].idx = vertical[1].idx1;
     m_leds[2].idx = vertical[0].idx2;
     m_leds[3].idx = vertical[1].idx2;
     for (int i = 0; i < 4; i++)
     {
-      m_leds[i].x = objs[m_leds[i].idx].cx;
-      m_leds[i].y = objs[m_leds[i].idx].cy;
+      m_leds[i].cx = objs[m_leds[i].idx].cx;
+      m_leds[i].cy = objs[m_leds[i].idx].cy;
     }
   }
 
@@ -249,8 +228,7 @@ private:
     return shortest;
   }
 
-  //TODO: rename leds to sensor_observations or something
-  size_t match_to_prior(const std::array<PA_object, 16> &leds, int distance_threshold)
+  size_t match_to_prior(const std::array<PA_object, 16> &objs, int distance_threshold)
   {
     size_t num_matched = 0;
 
@@ -270,14 +248,14 @@ private:
       // Greedily find nearest LED in *this* frame that has not yet been used
       int best_idx = -1;
       int best_distance = std::numeric_limits<int>::max();
-      for (int j = 0; j < leds.size(); j++)
+      for (int j = 0; j < objs.size(); j++)
       {
-        if (used[j] || !is_on_screen(leds[j]))
+        if (used[j] || !is_on_screen(objs[j]))
         {
           continue;
         }
 
-        int dist = distance (prev_frame, leds[j]);
+        int dist = distance (prev_frame, objs[j]);
         if (dist < best_distance && dist < distance_threshold)
         {
           best_idx = j;
@@ -289,56 +267,48 @@ private:
       if (best_idx >= 0)
       {
         m_leds[i].idx = best_idx;
-        m_leds[i].x = leds[best_idx].cx;
-        m_leds[i].y = leds[best_idx].cy;
+        m_leds[i].cx = objs[best_idx].cx;
+        m_leds[i].cy = objs[best_idx].cy;
         num_matched += 1;
         used[best_idx] = true;
       }
     }
 
-    //std::cout << "matched="<<num_matched<<std::endl;
     return num_matched;
   }
 
-  void canonicalize_leds(const std::array<PA_object, 16> &leds)
+  void canonicalize_leds(const std::array<PA_object, 16> &objs)
   {
     // Try matching to prior frame. Use half the distance of the vertical edge
     // (which should be the shortest distance between LEDs in sensor frame) as
     // threshold.
     int threshold = find_shortest_distance(m_leds) / 4; // 4 because all distances are square distances
-    size_t num_matched = match_to_prior(leds, threshold);
+    size_t num_matched = match_to_prior(objs, threshold);
 
     // If could not match all, perform ab initio identification
     if (num_matched < m_leds.size())
     {
-      identify_leds(leds);
+      identify_leds(objs);
     }
   }
 
-  void perspective_update(const std::array<PA_object, 16> &objs)
+  void perspective_update()
   {
     // Image points from sensor
     std::vector<cv::Point2f> image_points;
-    image_points.reserve(m_object_points.size());
-    //std::cout <<"--"<<std::endl;
     for (auto &led: m_leds)
     {
-      image_points.emplace_back(float(led.x), float(led.y));
-      //std::cout<<led.x<<","<<led.y<<std::endl;
+      image_points.emplace_back(float(led.cx), float(led.cy));
     }
-    //std::cout << objs[0].cx << ',' << objs[0].cy << std::endl;
 
     // Solve for model-view transform from image points
     cv::Mat rodrigues;
     cv::Mat translation;
-    bool result = solve_pnp(m_object_points, image_points, rodrigues, translation);
+    bool result = solve_pnp(m_target_points, image_points, rodrigues, translation);
 
     // Render
     if (result)
     {
-      //auto pos = cv::Point3f(translation);
-      //std::cout<<pos << std::endl;
-
       // Convert Rodrigues vector to 3x3 matrix
       cv::Mat rotation;
       cv::Rodrigues(rodrigues, rotation);
@@ -357,7 +327,6 @@ private:
       node::transform transform(rotation, translation);
 
       // Draw board
-      //draw_led_board(vector3::zero(), euler3::zero());
       draw_paddle(vector3::zero(), euler3::zero());
     }
   }
@@ -448,6 +417,9 @@ private:
     }
   }
 
+  float m_distance = 0;
+  float m_ya = 0;
+
   void draw_test_scene()
   {
     clear();
@@ -457,7 +429,6 @@ private:
       float horizontal_fov = 60;
       float aspect = float(width()) / float(height());
       set_camera(60, aspect, vector3(0, -0.1f, 0), euler3(30, 0, 0));
-      //draw_led_board(vector3::forward() * m_distance, euler3::up() * m_ya);
       draw_paddle(vector3::forward() * m_distance, euler3::up() * m_ya);
     }
 

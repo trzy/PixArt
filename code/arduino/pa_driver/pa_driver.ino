@@ -1,3 +1,42 @@
+/*
+ * pa_driver.ino:
+ *
+ * Main program for Adafruit nRF52832 Feather board.
+ *
+ * PixArt PCB board connector J1 leads:
+ *
+ *  +--------------+
+ *  |    PixArt    |
+ *  |              |
+ *  | C2        C1 |
+ *  |              |
+ *  | J1           |
+ *  | -----------  |
+ *  +-| | | | | |--+
+ *    | | | | | |
+ *    | | | | | |
+ *    | | | | | |
+ *    | | | | | GND
+ *    | | | | G12/MOSI
+ *    | | | |
+ *    | | | G11/MISO
+ *    | | |
+ *    | | G10/SCK
+ *    | |
+ *    | G9/CSB
+ *    |
+ *    VDDMA
+ *
+ * Connections to nRF52832 board headers:
+ *
+ *    VDDMA    -> +3.3v (recommend pin nearest GND)
+ *    G9/CSB   -> A0
+ *    G10/SCK  -> SCK
+ *    G11/MISO -> MISO (note MISO and MOSI ordering reversed from PixArt PCB)
+ *    G12/MOSI -> MOSI
+ *    GND      -> GND
+ */
+
 #include "pixart.hpp"
 #include "packets.hpp"
 #include "cooperative_task.hpp"

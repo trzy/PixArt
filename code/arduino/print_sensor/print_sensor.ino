@@ -1,7 +1,7 @@
 /*
  * Reads object data from PixArt sensor using Adafruit nRF52832 Feather.
  * PCB board connector J1 leads:
- * 
+ *
  *  +--------------+
  *  |    PixArt    |
  *  |              |
@@ -9,7 +9,7 @@
  *  |              |
  *  | J1           |
  *  | -----------  |
- *  + | | | | | |--+
+ *  +-| | | | | |--+
  *    | | | | | |
  *    | | | | | |
  *    | | | | | |
@@ -17,12 +17,21 @@
  *    | | | | G12/MOSI
  *    | | | |
  *    | | | G11/MISO
- *    | | | 
+ *    | | |
  *    | | G10/SCK
- *    | |   
+ *    | |
  *    | G9/CSB
  *    |
  *    VDDMA
+ *
+ * Connections to nRF52832 board headers:
+ *
+ *    VDDMA    -> +3.3v (recommend pin nearest GND)
+ *    G9/CSB   -> A0
+ *    G10/SCK  -> SCK
+ *    G11/MISO -> MISO (note MISO and MOSI ordering reversed from PixArt PCB)
+ *    G12/MOSI -> MOSI
+ *    GND      -> GND
  *
  * Vishay Semiconductors TSHA4400 IR LED (875nm) successfully detectable
  * by the PixArt sensor.
@@ -83,7 +92,7 @@ struct PA_object
     ptr += sprintf(ptr, "vy              = %d\n", vy);
     Serial.print(buffer);
   }
-  
+
   void load(const uint8_t *data, int format)
   {
     memset(this, 0, sizeof(this));
@@ -170,7 +179,7 @@ void PA_print_settings()
     PA_write(0xef, 0x0c);
     uint16_t cmd_scale_resolution_x = (PA_read(0x61) << 8) | PA_read(0x60);
     uint16_t cmd_scale_resolution_y = (PA_read(0x63) << 8) | PA_read(0x62);
-    
+
     // Reset back to bank 0
     PA_write(0xef, 0);
 
@@ -292,7 +301,7 @@ void PA_read_report(PA_object objs[16], int format)
   uint8_t report[256];
   int num_bytes = 256;
   uint8_t format_code = 5;
-  
+
   switch (format)
   {
     default:
@@ -327,10 +336,10 @@ void PA_read_report(PA_object objs[16], int format)
 
 void PA_init()
 {
- 
+
   // SPI begin
   SPI.beginTransaction(SPISettings(14000000, LSBFIRST, SPI_MODE3));
-  
+
   // Set up
   digitalWrite(A0, 0);  // chip select
   PA_load_initial_settings();
@@ -341,7 +350,7 @@ void PA_init()
   PA_set_debug_image(0);
   PA_print_settings();
   s_frame_period_micros = (unsigned) PA_get_frame_period_microseconds();
-   
+
   digitalWrite(A0, 1);
 
   // Read first frame
@@ -353,7 +362,7 @@ void PA_init()
   PA_object objs[16];
   PA_read_report(objs, 1);
   digitalWrite(A0, 1);
-  
+
   // SPI end
   //SPI.endTransaction();
 
@@ -376,7 +385,7 @@ void PA_init()
     image[y * 99 + 98] = '\n';
   }
   image[99 * 98] = 0;
-  
+
   for (int i = 0; i < 16; i++)
   {
     char symbol = i < 10 ? ('0' + i) : ('a' + i - 10);
@@ -384,27 +393,27 @@ void PA_init()
   }
   Serial.print("Image:\n");
   Serial.print(image);
-  free(image); 
+  free(image);
 }
 
 void setup() {
   Serial.begin(9600);
 
   pinMode(A0, OUTPUT);
-  digitalWrite(A0, 1); 
+  digitalWrite(A0, 1);
   SPI.begin();
-  
+
   PA_init();
-   
-  
+
+
   //SPI.end();
-  
+
   //digitalWrite(A0, 1);
   //SPI.beginTransaction(SPISettings(14000000, LSBFIRST, SPI_MODE3));
 }
 
 void loop() {
-  
+
   // put your main code here, to run repeatedly
   delayMicroseconds(s_frame_period_micros);
   digitalWrite(A0, 0);
@@ -418,5 +427,5 @@ void loop() {
   Serial.print(buffer);
 
   delayMicroseconds(1000000);
-  
+
 }

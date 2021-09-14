@@ -8,7 +8,7 @@
 # Search Paths
 ###############################################################################
 
-PROJECT_INCLUDE_DIRS = ..\arduino
+PROJECT_INCLUDE_DIRS = ../arduino
 
 BOOST_INCLUDE_DIR = c:\boost\boost_1_69_0
 BOOST_LIB_DIR = c:\boost\boost_1_69_0\stage\lib
